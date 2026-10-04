@@ -1,0 +1,1665 @@
+<title>Прототип MARU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: a grayscale wireframe "site" on a white sheet; an inverse prototype bar on top switches screens; numbered dots + notes explain each block */
+:root {
+  --sheet: #FFFFFF;
+  --paper: #F3F3F1;
+  --ink: #151515;
+  --ink-2: #4C4C49;
+  --ink-3: #6F6F6B;
+  --line: #D3D3CE;
+  --fill: #EDEDEA;
+  --fill-2: #E0E0DB;
+  --inv-bg: #151515;
+  --inv-fg: #F3F3F1;
+  --f-ui: "Golos Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r: 6px;
+  --gut: clamp(16px, 4vw, 40px);
+  --stick-top: 48px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --sheet: #18181A; --paper: #111112; --ink: #ECECE8; --ink-2: #BDBDB8; --ink-3: #96968F;
+    --line: #3A3A3C; --fill: #232325; --fill-2: #2D2D30; --inv-bg: #ECECE8; --inv-fg: #151515;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --sheet: #18181A; --paper: #111112; --ink: #ECECE8; --ink-2: #BDBDB8; --ink-3: #96968F;
+  --line: #3A3A3C; --fill: #232325; --fill-2: #2D2D30; --inv-bg: #ECECE8; --inv-fg: #151515;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--sheet); color: var(--ink); font-family: var(--f-ui); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(28px, 4.2vw, 46px); font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: clamp(22px, 2.6vw, 30px); font-weight: 700; letter-spacing: -0.01em; }
+h3 { font-size: 17px; font-weight: 600; }
+p { margin: 0; }
+a { color: inherit; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.wrap { max-width: 1240px; margin-inline: auto; padding-inline: var(--gut); }
+.mono { font-family: var(--f-mono); }
+.muted { color: var(--ink-2); }
+.small { font-size: 13px; }
+.tnum { font-variant-numeric: tabular-nums; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* ---------- prototype chrome ---------- */
+.proto { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 60; background: var(--inv-bg); color: var(--inv-fg); }
+.proto .wrap { display: flex; align-items: center; gap: 16px; min-height: 48px; }
+.proto-label { font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+.proto-nav { display: flex; gap: 4px; overflow-x: auto; flex: 1; min-width: 0; scrollbar-width: none; }
+.proto-nav a { text-decoration: none; font-size: 13px; padding: 6px 10px; border-radius: 4px; white-space: nowrap; opacity: 0.72; }
+.proto-nav a:hover { opacity: 1; }
+.proto-nav a[aria-current="page"] { opacity: 1; background: var(--inv-fg); color: var(--inv-bg); font-weight: 600; }
+.proto-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; white-space: nowrap; cursor: pointer; }
+.proto-toggle input { accent-color: currentColor; width: 16px; height: 16px; }
+
+/* ---------- annotations ---------- */
+.ann { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: var(--sheet); font: 600 11px/1 var(--f-mono); flex: none; vertical-align: middle; cursor: help; }
+.ann-abs { position: absolute; top: 10px; left: 10px; z-index: 3; box-shadow: 0 0 0 3px var(--sheet); }
+.notes { border: 1.5px dashed var(--ink-3); border-radius: var(--r); padding: 20px; margin-block: 48px 8px; background: var(--paper); }
+.notes h3 { font-family: var(--f-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; color: var(--ink-2); }
+.notes ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 12px 28px; }
+.notes li { display: flex; gap: 10px; font-size: 14px; color: var(--ink-2); }
+.notes li .ann { cursor: default; }
+body.no-ann .ann, body.no-ann .notes { display: none; }
+
+/* ---------- placeholders ---------- */
+.ph { position: relative; display: grid; place-items: center; background-color: var(--fill); border-radius: var(--r); overflow: hidden; color: var(--ink-3); font: 500 12px/1.3 var(--f-mono); text-align: center; text-decoration: none;
+  background-image:
+    linear-gradient(to top right, transparent calc(50% - 0.6px), var(--line) calc(50% - 0.6px), var(--line) calc(50% + 0.6px), transparent calc(50% + 0.6px)),
+    linear-gradient(to bottom right, transparent calc(50% - 0.6px), var(--line) calc(50% - 0.6px), var(--line) calc(50% + 0.6px), transparent calc(50% + 0.6px)); }
+.ph > span { background: var(--fill); padding: 3px 8px; border-radius: 3px; position: relative; z-index: 1; }
+.skel { display: grid; gap: 8px; }
+.skel i { display: block; height: 10px; border-radius: 3px; background: var(--fill-2); }
+.skel i:nth-child(3n) { width: 82%; }
+.skel i:nth-child(4n) { width: 64%; }
+
+/* ---------- controls ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 18px; border: 1.5px solid var(--ink); border-radius: var(--r); background: transparent; font-weight: 600; font-size: 14px; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.btn:hover { background: var(--fill); }
+.btn-primary { background: var(--ink); color: var(--sheet); }
+.btn-primary:hover { background: var(--ink-2); border-color: var(--ink-2); }
+.btn-ghost { border-color: var(--line); }
+.btn-sm { min-height: 36px; padding: 0 12px; font-size: 13px; }
+.btn-block { width: 100%; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field > label, .label { font-size: 12px; color: var(--ink-2); font-weight: 500; }
+.input, select.input { height: 44px; border: 1px solid var(--line); border-radius: var(--r); background: var(--sheet); padding: 0 12px; width: 100%; min-width: 0; }
+.seg { display: inline-flex; border: 1.5px solid var(--ink); border-radius: var(--r); overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 0 14px; min-height: 40px; cursor: pointer; font-size: 14px; font-weight: 500; }
+.seg button + button { border-left: 1.5px solid var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--sheet); }
+.seg-sm button { min-height: 32px; padding: 0 10px; font-size: 12px; font-family: var(--f-mono); }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; font-size: 14px; text-decoration: none; background: var(--sheet); cursor: pointer; }
+.chip:hover { border-color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--sheet); border-color: var(--ink); }
+.check { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; min-height: 32px; }
+.check input { width: 18px; height: 18px; accent-color: var(--ink); }
+input[type="range"] { width: 100%; accent-color: var(--ink); }
+.badge { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 4px; background: var(--sheet); border: 1px solid var(--ink); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.badge-solid { background: var(--ink); color: var(--sheet); }
+.tag { font: 500 11px/1 var(--f-mono); text-transform: uppercase; letter-spacing: 0.06em; padding: 4px 6px; border-radius: 3px; border: 1px solid var(--ink-3); color: var(--ink-2); white-space: nowrap; }
+.tag-mvp { background: var(--ink); color: var(--sheet); border-color: var(--ink); }
+.icon { width: 18px; height: 18px; flex: none; }
+
+/* ---------- site header ---------- */
+.site-head { border-bottom: 1px solid var(--line); background: var(--sheet); }
+.site-head .wrap { display: flex; align-items: center; gap: 24px; min-height: 68px; flex-wrap: wrap; padding-block: 10px; }
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 700; font-size: 20px; letter-spacing: 0.06em; }
+.logo-mark { width: 34px; height: 34px; border: 1.5px solid var(--ink); border-radius: 50%; display: grid; place-items: center; font: 600 9px var(--f-mono); letter-spacing: 0; }
+.site-nav { display: flex; gap: 20px; flex: 1; flex-wrap: wrap; font-size: 14px; font-weight: 500; }
+.site-nav a { text-decoration: none; }
+.site-nav a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.head-tools { display: flex; align-items: center; gap: 10px; position: relative; }
+.fav-count { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; text-decoration: none; padding: 8px; }
+
+/* ---------- screens ---------- */
+.screen { display: none; padding-block: 0 40px; }
+.screen.on { display: block; }
+.section { padding-block: 44px; border-top: 1px solid var(--line); position: relative; }
+.section:first-of-type { border-top: 0; }
+.sec-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
+.sec-head h2 { display: flex; align-items: center; gap: 12px; }
+.crumbs { font-size: 13px; color: var(--ink-2); padding-block: 18px 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+.crumbs a { text-decoration: none; }
+.crumbs a:hover { text-decoration: underline; }
+
+/* hero */
+.hero { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 32px; padding-block: 40px 28px; align-items: stretch; }
+.hero-eyebrow { font: 500 12px var(--f-mono); letter-spacing: 0.04em; color: var(--ink-2); margin-bottom: 16px; }
+.hero p.lead { font-size: 18px; color: var(--ink-2); max-width: 56ch; margin-top: 16px; }
+.search { grid-column: 1 / -1; margin-top: 4px; border: 1.5px solid var(--ink); border-radius: 10px; padding: 16px; display: grid; gap: 14px; position: relative; background: var(--sheet); }
+.search-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 10px; align-items: end; }
+.hero-media { min-height: 300px; }
+.trust { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding-block: 8px 36px; position: relative; }
+.trust div { border-top: 1.5px solid var(--ink); padding-top: 12px; font-size: 14px; }
+.trust b { display: block; font-size: 15px; margin-bottom: 2px; }
+
+/* cards */
+.grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); }
+.grid-3 { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+.card { position: relative; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.card-media { aspect-ratio: 4 / 3; max-width: 100%; }
+.card-badges { position: absolute; top: 10px; left: 10px; display: flex; flex-wrap: wrap; gap: 6px; z-index: 2; max-width: calc(100% - 60px); }
+.fav { position: absolute; top: 8px; right: 8px; z-index: 2; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--sheet); display: grid; place-items: center; cursor: pointer; }
+.fav[aria-pressed="true"] svg { fill: var(--ink); }
+.card-kicker { font-size: 13px; color: var(--ink-2); }
+.card h3 a { text-decoration: none; }
+.card h3 a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.card-meta { font-size: 13px; color: var(--ink-2); }
+.card-price { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.card-sub { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.card-body { display: grid; gap: 4px; }
+
+.areas { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); }
+.area { display: grid; gap: 8px; text-decoration: none; }
+.area .ph { aspect-ratio: 1 / 1; }
+.area b { font-size: 15px; }
+
+.steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; counter-reset: step; }
+.step { border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: grid; gap: 8px; align-content: start; }
+.step-n { font: 600 12px var(--f-mono); color: var(--ink-2); }
+.step b { font-size: 15px; }
+.step p { font-size: 13px; color: var(--ink-2); }
+
+.quiz { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 32px; border: 1.5px solid var(--ink); border-radius: 12px; padding: clamp(20px, 4vw, 40px); position: relative; }
+.quiz-progress { display: flex; gap: 6px; margin-bottom: 16px; }
+.quiz-progress i { height: 4px; flex: 1; background: var(--fill-2); border-radius: 2px; }
+.quiz-progress i.done { background: var(--ink); }
+.quiz-opts { display: grid; gap: 10px; }
+.quiz-opt { text-align: left; border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; background: var(--sheet); cursor: pointer; font-size: 15px; min-height: 52px; }
+.quiz-opt:hover { border-color: var(--ink); }
+.proto-msg { border: 1.5px dashed var(--ink-3); border-radius: var(--r); padding: 14px 16px; font-size: 14px; background: var(--paper); }
+
+.reviews { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.review .ph { aspect-ratio: 9 / 12; max-width: 100%; }
+.faq details { border-top: 1px solid var(--line); padding-block: 16px; }
+.faq details:last-child { border-bottom: 1px solid var(--line); }
+.faq summary { cursor: pointer; font-weight: 600; font-size: 16px; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+.faq summary::after { content: "+"; font-family: var(--f-mono); font-weight: 500; }
+.faq details[open] summary::after { content: "−"; }
+.faq details p { margin-top: 10px; color: var(--ink-2); max-width: 70ch; }
+
+.site-foot { border-top: 1.5px solid var(--ink); padding-block: 40px; margin-top: 24px; background: var(--paper); }
+.foot-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
+.foot-grid h4 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; font-family: var(--f-mono); font-weight: 500; color: var(--ink-2); }
+.foot-grid ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.foot-legal { margin-top: 32px; font-size: 12px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 8px 20px; }
+
+/* catalog */
+.cat-head { display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap; padding-block: 8px 20px; }
+.cat { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 32px; align-items: start; }
+.filters { border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 18px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 64px); }
+.filters .fgroup { display: grid; gap: 8px; }
+.bed-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.bed-row .chip { padding: 6px 12px; font-size: 13px; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; position: relative; }
+.mapview { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; }
+.map { position: relative; min-height: 560px; border-radius: 10px; }
+.pin { position: absolute; transform: translate(-50%, -100%); background: var(--ink); color: var(--sheet); font: 600 12px var(--f-mono); padding: 5px 8px; border-radius: 4px; text-decoration: none; z-index: 2; white-space: nowrap; }
+.pin::after { content: ""; position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px; background: var(--ink); transform: translateX(-50%) rotate(45deg); z-index: -1; }
+.maplist { display: grid; gap: 12px; max-height: 560px; overflow: auto; align-content: start; }
+.mini { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; text-decoration: none; border: 1px solid var(--line); border-radius: var(--r); padding: 8px; }
+.mini .ph { aspect-ratio: 1; }
+.empty { border: 1.5px dashed var(--ink-3); border-radius: 10px; padding: 32px; text-align: center; display: grid; gap: 12px; justify-items: center; }
+.save-search { border-top: 1px solid var(--line); padding-top: 16px; display: grid; gap: 10px; }
+
+/* object page */
+.obj-title { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; align-items: start; padding-block: 8px 20px; }
+.obj-title .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.gallery { display: grid; grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 210px 210px; gap: 8px; position: relative; }
+.gallery .ph:first-child { grid-row: span 2; }
+.gallery-actions { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 8px; z-index: 3; }
+.gallery-actions .btn { background: var(--sheet); }
+.obj { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 40px; align-items: start; margin-top: 32px; }
+.obj-main > section { padding-block: 32px; border-top: 1px solid var(--line); position: relative; }
+.obj-main > section:first-child { border-top: 0; padding-top: 0; }
+.obj-main h2 { font-size: 22px; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.facts div { background: var(--sheet); padding: 14px; display: grid; gap: 2px; }
+.facts dt, .facts span { font-size: 12px; color: var(--ink-2); }
+.facts b { font-size: 15px; }
+.aside { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 64px); border: 1.5px solid var(--ink); border-radius: 12px; padding: 22px; display: grid; gap: 16px; }
+.price-big { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.calc { border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 12px; }
+.calc-out { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.calc-out b { font-size: 18px; }
+.manager { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; align-items: center; border-top: 1px solid var(--line); padding-top: 14px; }
+.manager .ph { width: 52px; height: 52px; border-radius: 50%; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-size: 12px; font-weight: 500; color: var(--ink-2); background: var(--paper); }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; }
+.payplan { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.payplan div { padding: 14px; border-right: 1px solid var(--line); display: grid; gap: 4px; }
+.payplan div:last-child { border-right: 0; }
+.payplan b { font-size: 15px; }
+.payplan span { font-size: 12px; color: var(--ink-2); }
+.progress { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.progress figure { margin: 0; display: grid; gap: 6px; }
+.progress .ph { aspect-ratio: 4 / 3; max-width: 100%; }
+.progress figcaption { font-size: 12px; color: var(--ink-2); font-family: var(--f-mono); }
+.map-row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px; }
+.map-row .ph { min-height: 240px; }
+.dist { list-style: none; padding: 0; margin: 0; display: grid; }
+.dist li { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding-block: 10px; font-size: 14px; }
+.amen { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.docs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.docs li { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--line); border-radius: var(--r); padding: 10px 14px; font-size: 14px; flex-wrap: wrap; }
+.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.checklist li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; font-size: 14px; }
+.box { width: 20px; height: 20px; border: 1.5px solid var(--ink); border-radius: 4px; display: grid; place-items: center; font: 600 12px var(--f-mono); }
+.box.ok { background: var(--ink); color: var(--sheet); }
+.dev { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 16px; align-items: center; }
+.dev .ph { width: 96px; height: 96px; }
+
+/* how to buy */
+.timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.timeline li { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 16px; padding-block: 20px; border-top: 1px solid var(--line); align-items: start; }
+.timeline li:last-child { border-bottom: 1px solid var(--line); }
+.tl-n { width: 40px; height: 40px; border: 1.5px solid var(--ink); border-radius: 50%; display: grid; place-items: center; font: 600 14px var(--f-mono); }
+.timeline b { font-size: 17px; }
+.timeline p { color: var(--ink-2); font-size: 14px; margin-top: 4px; max-width: 64ch; }
+.tl-time { font: 500 12px var(--f-mono); color: var(--ink-2); white-space: nowrap; padding-top: 4px; }
+.pay-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.pay-opts > div { border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: grid; gap: 8px; align-content: start; }
+.cta-band { border: 1.5px solid var(--ink); border-radius: 12px; padding: clamp(20px, 4vw, 36px); display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+
+/* sitemap */
+.tree-root { display: flex; justify-content: center; margin-bottom: 28px; }
+.tree-root .node { background: var(--ink); color: var(--sheet); border-color: var(--ink); }
+.tree { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); position: relative; }
+.branch { border: 1.5px solid var(--ink); border-radius: var(--r); padding: 14px; display: grid; gap: 10px; align-content: start; }
+.branch > b { font-size: 16px; }
+.branch ul { list-style: none; margin: 0; padding: 0 0 0 12px; border-left: 1px solid var(--line); display: grid; gap: 8px; }
+.branch li { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; align-items: start; }
+.node { border: 1.5px solid var(--ink); border-radius: var(--r); padding: 10px 18px; font-weight: 600; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); align-items: center; margin-top: 12px; }
+
+/* bottom bar, sheets, toast */
+[hidden] { display: none !important; }
+.mbar { display: none; }
+.m-only { display: none !important; }
+.burger { display: none; width: 44px; height: 44px; border: 1.5px solid var(--ink); border-radius: var(--r); background: transparent; place-items: center; cursor: pointer; flex: none; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 90; background: var(--inv-bg); color: var(--inv-fg); padding: 12px 16px; border-radius: 8px; width: max-content; max-width: min(92%, 520px); font-size: 14px; }
+.sheet { position: fixed; inset: 0; z-index: 80; background: var(--sheet); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 6px 8px 6px 16px; border-bottom: 1px solid var(--line); }
+.sheet-head b { font-size: 17px; }
+.sheet-close { width: 44px; height: 44px; border: 0; background: transparent; font-size: 28px; line-height: 1; cursor: pointer; }
+.sheet-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; }
+.sheet-foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); }
+.sheet .filters { border: 0; padding: 0; position: static; }
+.menu-links { list-style: none; margin: 0; padding: 0; display: grid; }
+.menu-links a { display: flex; justify-content: space-between; align-items: center; min-height: 54px; border-bottom: 1px solid var(--line); text-decoration: none; font-size: 18px; font-weight: 600; }
+.menu-links a::after { content: "→"; font-family: var(--f-mono); font-weight: 400; color: var(--ink-3); }
+.gal { position: relative; }
+.gal-count { position: absolute; left: calc(var(--gut) + 10px); top: 10px; z-index: 3; background: var(--ink); color: var(--sheet); font: 600 12px/1 var(--f-mono); padding: 6px 8px; border-radius: 4px; }
+
+/* prototype: desktop / phone switch */
+.proto .seg { border-color: var(--inv-fg); }
+.proto .seg button + button { border-left-color: var(--inv-fg); }
+.proto .seg button[aria-pressed="true"] { background: var(--inv-fg); color: var(--inv-bg); }
+.view-toggle { flex: none; }
+.device-wrap.phone { --stick-top: 0px; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 32px; padding-block: 28px 48px; padding-inline: 16px; background: var(--paper); }
+.phone .device { position: relative; flex: none; width: 410px; max-width: 100%; height: 780px; height: clamp(560px, calc(100vh - 110px), 844px); height: clamp(560px, calc(100dvh - 110px), 844px); border: 10px solid var(--ink); border-radius: 48px; overflow: hidden; background: var(--sheet); }
+.phone .frame { height: 100%; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.phone .frame::-webkit-scrollbar { display: none; }
+.phone .sheet, .phone .toast { position: absolute; }
+.phone .device .notes, .phone .device .ann { display: none !important; }
+.mnotes { display: none; }
+.device-wrap.phone .mnotes { display: block; width: 340px; max-width: 100%; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 72px); border: 1.5px dashed var(--ink-3); border-radius: var(--r); padding: 20px; background: var(--sheet); }
+body.no-ann .device-wrap.phone .mnotes { display: none; }
+.mnotes h3 { font: 500 12px var(--f-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-2); margin-bottom: 6px; }
+.mnotes .mn-title { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
+.mnotes ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.mnotes li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; font-size: 14px; color: var(--ink-2); }
+.mnotes p { margin-top: 16px; font-size: 13px; color: var(--ink-3); }
+
+/* ≤1020 px of site width (class set by script from the frame width) */
+.t .hero { grid-template-columns: 1fr; }
+.t .hero-media { min-height: 220px; }
+.t .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.t .cat { grid-template-columns: 1fr; }
+.t .filters { position: static; }
+.t .obj { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.t .obj-main { display: contents; }
+.t .obj-main > section:first-child { order: 1; }
+.t .aside { position: static; order: 2; margin-block: 8px 32px; }
+.t .obj-main > section:nth-child(n+2) { order: 3; }
+.t .mapview { grid-template-columns: 1fr; }
+.t .foot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* ≤760 px: phone */
+.m { --gut: 16px; }
+.m h1 { font-size: 27px !important; }
+.m h2 { font-size: 22px; }
+.m .m-only { display: inline-flex !important; }
+.m .site-nav, .m .head-tg, .m .logo-mark, .m .fav-count { display: none; }
+.m .burger { display: inline-grid; }
+.m .site-head .wrap { flex-wrap: nowrap; gap: 10px; min-height: 56px; padding-block: 6px; }
+.m .logo { font-size: 18px; margin-right: auto; }
+.m .head-tools { gap: 8px; }
+.m .hero { padding-block: 20px 8px; gap: 16px; }
+.m .hero-media { display: none; }
+.m .hero-eyebrow { font-size: 11px; margin-bottom: 10px; }
+.m .hero p.lead { font-size: 16px; margin-top: 10px; }
+.m .search { padding: 12px; margin-top: 0; }
+.m .search .seg { display: flex; }
+.m .search .seg button { flex: 1; }
+.m .search-row { grid-template-columns: 1fr 1fr; }
+.m .search-row .field:first-child, .m .search-row .btn { grid-column: 1 / -1; }
+.m .trust { grid-template-columns: 1fr 1fr; gap: 14px 16px; padding-block: 16px 24px; }
+.m .trust div { font-size: 13px; }
+.m .trust b { font-size: 14px; }
+.m .section { padding-block: 32px; }
+.m .sec-head { margin-bottom: 16px; }
+.m #collections, .m #home-projects, .m #home-listings, .m #similar-projects, .m #similar-listings, .m .steps, .m .reviews, .m .progress {
+  display: flex; flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px;
+  margin-inline: calc(-1 * var(--gut)); padding-inline: var(--gut); scroll-padding-inline: var(--gut); scrollbar-width: none; }
+.m #collections > .chip { flex: none; scroll-snap-align: start; }
+.m #home-projects > *, .m #home-listings > *, .m #similar-projects > *, .m #similar-listings > * { flex: 0 0 84%; scroll-snap-align: start; }
+.m .steps > .step { flex: 0 0 72%; scroll-snap-align: start; }
+.m .reviews > .review { flex: 0 0 58%; scroll-snap-align: start; }
+.m .progress > figure { flex: 0 0 62%; scroll-snap-align: start; }
+.m .areas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.m .quiz { grid-template-columns: 1fr; padding: 20px; gap: 16px; }
+.m .quiz .ph { display: none; }
+.m .cat-head { padding-block: 4px 12px; }
+.m .cat-head > .row, .m .cat-head .seg { display: flex; width: 100%; }
+.m .cat-head .seg button { flex: 1; }
+.m .toolbar { position: sticky; top: var(--stick-top); z-index: 20; background: var(--sheet); margin-inline: calc(-1 * var(--gut)); padding: 10px var(--gut); border-bottom: 1px solid var(--line); flex-wrap: nowrap; gap: 8px; margin-bottom: 16px; }
+.m .toolbar .field { flex: 1; min-width: 0; }
+.m .toolbar .label { display: none; }
+.m .toolbar select.input { width: 100% !important; }
+.m .map { min-height: 340px; }
+.m .maplist { display: flex; overflow-x: auto; max-height: none; gap: 10px; scroll-snap-type: x mandatory; }
+.m .mini { flex: 0 0 80%; scroll-snap-align: start; }
+.m .obj-title { padding-block: 4px 12px; }
+.m .obj-title > .row { width: 100%; flex-wrap: nowrap; }
+.m .obj-title > .row .btn { flex: 1; padding: 0 8px; }
+.m .gal { margin-inline: calc(-1 * var(--gut)); }
+.m .gallery { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 6px; padding-inline: var(--gut); scroll-padding-inline: var(--gut); scrollbar-width: none; }
+.m .gallery .ph { flex: 0 0 88%; height: 250px; scroll-snap-align: start; }
+.m .gallery-actions { position: static; padding: 8px var(--gut) 0; }
+.m .obj { margin-top: 16px; }
+.m .obj-main h2 { font-size: 20px; }
+.m .facts { grid-template-columns: 1fr 1fr; }
+.m .facts > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+.m .table-wrap th, .m .table-wrap td { white-space: normal; padding: 10px 12px; }
+.m .table-wrap td.num, .m .table-wrap th.num { white-space: nowrap; text-align: right; }
+.m .aside { padding: 16px; border-radius: 10px; }
+.m .price-big { font-size: 26px; }
+.m table.units thead { display: none; }
+.m table.units, .m table.units tbody { display: block; width: 100%; }
+.m table.units tr { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.m table.units tr:last-child { border-bottom: 0; }
+.m table.units td { display: block; border: 0; padding: 0; white-space: normal; text-align: left; }
+.m table.units td.num { text-align: left; white-space: normal; }
+.m table.units td::before { content: attr(data-label); display: block; font-size: 11px; color: var(--ink-2); }
+.m table.units td:first-child { grid-column: 1 / -1; font-weight: 600; font-size: 15px; }
+.m table.units td:last-child { grid-column: 1 / -1; }
+.m table.units td:first-child::before, .m table.units td:last-child::before { content: none; }
+.m .payplan { grid-template-columns: 1fr 1fr; }
+.m .payplan div:nth-child(2) { border-right: 0; }
+.m .payplan div:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+.m .map-row { grid-template-columns: 1fr; }
+.m .pay-opts { grid-template-columns: 1fr; }
+.m .timeline li { grid-template-columns: 44px minmax(0, 1fr); }
+.m .tl-time { grid-column: 2; padding-top: 0; }
+.m .cta-band { padding: 20px; }
+.m .foot-grid { grid-template-columns: 1fr; }
+.m .mbar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; position: sticky; bottom: 0; z-index: 30; background: var(--sheet); border-top: 1.5px solid var(--ink); padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); }
+.m .mbar.mbar-price { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.m .mbar .btn { padding: 0 10px; font-size: 13px; }
+.mp b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+.mp span { font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.m .toast { bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+@media (max-width: 760px) {
+  .proto-label, .view-toggle { display: none !important; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .screen.on { animation: fade 0.18s ease-out; }
+  @keyframes fade { from { opacity: 0.6; } to { opacity: 1; } }
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-9.2-8.6C1.3 8.4 3 5 6.4 5c2.1 0 3.6 1.2 4.6 2.7h2C14 6.2 15.5 5 17.6 5 21 5 22.7 8.4 21.2 11.4 19 15.6 12 20 12 20z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-tg" viewBox="0 0 24 24"><path d="M21 4 3 11l6 2 2 6 3-4 5 4 2-15zM9 13l9-6-6 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-wa" viewBox="0 0 24 24"><path d="M4 20l1.3-4A8 8 0 1 1 8 18.7L4 20z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 9.5c.3 2 2.5 4.2 4.5 4.5l1-1 1.5.8-.4 1.3c-3 .3-6.6-3.3-6.3-6.3l1.3-.4.8 1.5-1 1" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M16 10l5-3v10l-5-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V3m0 0L8 7m4-4 4 4M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<header class="proto" aria-label="Навигация по прототипу">
+  <div class="wrap">
+    <span class="proto-label">Прототип · MARU</span>
+    <nav class="proto-nav" aria-label="Экраны прототипа">
+      <a href="#home" data-nav="home">Главная</a>
+      <a href="#catalog" data-nav="catalog">Каталог</a>
+      <a href="#project" data-nav="project">Страница ЖК</a>
+      <a href="#listing" data-nav="listing">Объект вторички</a>
+      <a href="#howto" data-nav="howto">Как купить</a>
+      <a href="#sitemap" data-nav="sitemap">Карта сайта</a>
+    </nav>
+    <div class="seg seg-sm view-toggle" role="group" aria-label="Вид прототипа">
+      <button type="button" data-vmode="desktop" aria-pressed="true">Десктоп</button>
+      <button type="button" data-vmode="phone" aria-pressed="false">Телефон</button>
+    </div>
+    <label class="proto-toggle"><input type="checkbox" id="ann-toggle" checked> Заметки</label>
+  </div>
+</header>
+
+<div class="device-wrap" id="device-wrap">
+<div class="device" id="device">
+<div class="frame" id="frame">
+<div class="site-head">
+  <div class="wrap">
+    <a href="#home" class="logo"><span class="logo-mark">ЛОГО</span>MARU</a>
+    <nav class="site-nav" aria-label="Основное меню сайта">
+      <a href="#new">Новостройки</a>
+      <a href="#resale">Вторичка</a>
+      <a href="#sitemap">Районы</a>
+      <a href="#howto">Как купить</a>
+      <a href="#sitemap">Инвестиции</a>
+      <a href="#sitemap">О компании</a>
+    </nav>
+    <div class="head-tools">
+      <span class="ann ann-head" data-n="1">1</span>
+      <div class="seg seg-sm" role="group" aria-label="Валюта">
+        <button type="button" data-cur="USD" aria-pressed="true">USD</button>
+        <button type="button" data-cur="RUB" aria-pressed="false">RUB</button>
+        <button type="button" data-cur="EUR" aria-pressed="false">EUR</button>
+      </div>
+      <a class="fav-count" href="#catalog" aria-label="Избранное"><svg class="icon"><use href="#i-heart"/></svg><span id="fav-n" class="tnum">0</span></a>
+      <a class="btn btn-primary btn-sm head-tg" href="#home" data-tg><svg class="icon"><use href="#i-tg"/></svg>Написать в Telegram</a>
+      <button type="button" class="burger" data-open="menu-sheet" aria-label="Открыть меню"><svg class="icon"><use href="#i-menu"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<main>
+<!-- =================== HOME =================== -->
+<section class="screen" id="home" data-screen="home" aria-label="Главная">
+  <div class="wrap">
+    <div class="hero">
+      <div>
+        <div class="hero-eyebrow">ХУРГАДА · САХЛЬ-ХАШИШ · МАКАДИ · СОМА-БЕЙ · ЭЛЬ-ГУНА</div>
+        <h1>Квартиры в Хургаде. Покупка из России без поездки</h1>
+        <p class="lead">Новостройки от застройщиков в рассрочку и проверенная вторичка. Онлайн-показ, юридическая проверка и помощь с оплатой.</p>
+      </div>
+      <div class="ph hero-media"><span>Видео с дрона: побережье и комплексы<br>(автоплей без звука)</span></div>
+        <form class="search" id="home-search">
+          <span class="ann ann-abs" data-n="2" style="top:-11px;left:-11px">2</span>
+          <div class="seg" role="group" aria-label="Тип рынка">
+            <button type="button" data-hmarket="new" aria-pressed="true">Новостройки</button>
+            <button type="button" data-hmarket="resale" aria-pressed="false">Вторичка</button>
+          </div>
+          <div class="search-row">
+            <div class="field"><label for="hs-city">Где</label>
+              <select class="input" id="hs-city">
+                <option value="all">Вся Хургада и курорты</option>
+                <option value="city">Хургада, город</option>
+                <option value="sahl">Сахль-Хашиш</option>
+                <option value="makadi">Макади и Сома-Бей</option>
+                <option value="gouna">Эль-Гуна</option>
+              </select></div>
+            <div class="field"><label for="hs-beds">Спальни</label>
+              <select class="input" id="hs-beds">
+                <option value="any">Любое</option>
+                <option value="0">Студия</option>
+                <option value="1">1 спальня</option>
+                <option value="2">2 спальни</option>
+                <option value="3">3+</option>
+              </select></div>
+            <div class="field"><label for="hs-max">Бюджет до, <span class="cur-code">USD</span></label>
+              <input class="input tnum" id="hs-max" inputmode="numeric" placeholder="например, 80 000"></div>
+            <button class="btn btn-primary" type="submit">Показать</button>
+          </div>
+        </form>
+    </div>
+
+    <div class="trust">
+      <span class="ann ann-abs" data-n="3" style="top:-14px;left:-11px">3</span>
+      <div><b>Офис в Хургаде</b><span class="muted">[адрес, фото офиса]</span></div>
+      <div><b>Юрист в команде</b><span class="muted">[проверка документов до депозита]</span></div>
+      <div><b>Онлайн-показ</b><span class="muted">[видеозвонок из объекта, запись]</span></div>
+      <div><b>Белая сделка</b><span class="muted">оплата, после которой объект регистрируется и даёт ВНЖ</span></div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="section">
+      <div class="sec-head"><h2><span class="ann" data-n="4">4</span>Подборки</h2></div>
+      <div class="row" id="collections"></div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head">
+        <h2><span class="ann" data-n="5">5</span>Новостройки с рассрочкой</h2>
+        <a href="#new" class="btn btn-ghost btn-sm">Все новостройки</a>
+      </div>
+      <div class="grid grid-3" id="home-projects"></div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head">
+        <h2>Свежая вторичка</h2>
+        <a href="#resale" class="btn btn-ghost btn-sm">Вся вторичка</a>
+      </div>
+      <div class="grid" id="home-listings"></div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head"><h2>Районы Хургады</h2><span class="muted small">Каждый район — отдельная SEO-страница с гайдом и ценой м²</span></div>
+      <div class="areas">
+        <a class="area" href="#catalog"><div class="ph"><span>фото</span></div><b>Центр: Дахар и Сакалла</b><span class="muted small">старый город, самые доступные студии</span></a>
+        <a class="area" href="#catalog"><div class="ph"><span>фото</span></div><b>Эль-Мамша и Интерконти</b><span class="muted small">набережная, первая линия</span></a>
+        <a class="area" href="#catalog"><div class="ph"><span>фото</span></div><b>Арабия, Кавсар, Ахья</b><span class="muted small">[описание района]</span></a>
+        <a class="area" href="#catalog"><div class="ph"><span>фото</span></div><b>Сахль-Хашиш</b><span class="muted small">закрытый курорт к югу от города</span></a>
+        <a class="area" href="#catalog"><div class="ph"><span>фото</span></div><b>Макади и Сома-Бей</b><span class="muted small">курорты на юге, рифы</span></a>
+        <a class="area" href="#catalog"><div class="ph"><span>фото</span></div><b>Эль-Гуна</b><span class="muted small">город на лагунах к северу</span></a>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head">
+        <h2><span class="ann" data-n="6">6</span>Как купить удалённо</h2>
+        <a href="#howto" class="btn btn-ghost btn-sm">Подробно о сделке</a>
+      </div>
+      <div class="steps">
+        <div class="step"><span class="step-n">ШАГ 1</span><b>Подбор и онлайн-показ</b><p>Присылаем варианты в Telegram, показываем по видеосвязи.</p></div>
+        <div class="step"><span class="step-n">ШАГ 2</span><b>Бронь и проверка</b><p>Фиксируем цену, юрист проверяет документы.</p></div>
+        <div class="step"><span class="step-n">ШАГ 3</span><b>Договор и оплата</b><p>Подписание по доверенности или лично, оплата удобным способом.</p></div>
+        <div class="step"><span class="step-n">ШАГ 4</span><b>Оформление права</b><p>Регистрация собственности, документы для ВНЖ.</p></div>
+        <div class="step"><span class="step-n">ШАГ 5</span><b>Ключи и аренда</b><p>Меблировка, управляющая компания, сдача в аренду.</p></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="quiz" id="quiz">
+        <span class="ann ann-abs" data-n="7" style="top:-11px;left:-11px">7</span>
+        <div class="stack">
+          <h2>Подберём 5 вариантов под ваш бюджет за 15 минут</h2>
+          <p class="muted">Ответьте на 3 вопроса — пришлём подборку с ценами, планировками и видео в Telegram или WhatsApp.</p>
+          <div class="ph" style="min-height:140px"><span>фото менеджера + «отвечаем с 9 до 21 по Москве»</span></div>
+        </div>
+        <div id="quiz-body" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head"><h2><span class="ann" data-n="8">8</span>Отзывы покупателей</h2><span class="muted small">Видео + ссылка на объект, который купили</span></div>
+      <div class="reviews">
+        <div class="review stack"><div class="ph"><span>видео-отзыв<br>1:30</span></div><b>[Имя, город]</b><span class="muted small">Купили студию в Сахль-Хашише, сдают через УК</span></div>
+        <div class="review stack"><div class="ph"><span>видео-отзыв<br>2:10</span></div><b>[Имя, город]</b><span class="muted small">Рассрочка на 5 лет, ни разу не были в Египте до сделки</span></div>
+        <div class="review stack"><div class="ph"><span>видео-отзыв<br>0:55</span></div><b>[Имя, город]</b><span class="muted small">Переехали, оформили ВНЖ через покупку</span></div>
+      </div>
+    </div>
+
+    <div class="section faq">
+      <div class="sec-head"><h2>Частые вопросы</h2></div>
+      <details><summary>Может ли гражданин России купить квартиру в Египте?</summary><p>[Короткий ответ юриста, 2–3 предложения, и ссылка на раздел «Как купить».]</p></details>
+      <details><summary>Как перевести деньги из России?</summary><p>Чтобы объект зарегистрировали, деньги должны прийти банковским переводом в валюте из-за рубежа. [Маршруты, которые компания поддерживает, — текст согласует юрист.]</p></details>
+      <details><summary>Даёт ли покупка недвижимости ВНЖ?</summary><p>Да, если объект зарегистрирован: от $50 тыс. — ВНЖ на 1 год, от $100 тыс. — на 3 года, от $200 тыс. — на 5 лет. [Проверяет юрист перед публикацией.]</p></details>
+      <details><summary>Чем отличаются застройщики в городе и на курортах?</summary><p>Местные застройщики Хургады обычно просят взнос 15–50% и рассрочку до 3 лет. Крупные девелоперы на курортах — взнос 5–10% и до 6–8 лет. За полную оплату сразу часто дают скидку 10–20%.</p></details>
+      <details><summary>Можно ли купить, не приезжая в Египет?</summary><p>[Доверенность, онлайн-показ, электронная подпись договора.]</p></details>
+      <details><summary>Сколько стоит содержание квартиры в год?</summary><p>[Сбор за обслуживание, коммунальные платежи, налоги — с примером расчёта.]</p></details>
+    </div>
+
+    <div class="notes" data-notes="home"></div>
+  </div>
+</section>
+
+<!-- =================== CATALOG =================== -->
+<section class="screen" id="catalog" data-screen="catalog" aria-label="Каталог">
+  <div class="wrap">
+    <div class="crumbs"><a href="#home">Главная</a><span>/</span><span id="cat-crumb">Новостройки в Хургаде</span></div>
+    <div class="cat-head">
+      <div class="stack" style="gap:6px">
+        <h1 id="cat-title" style="font-size:clamp(26px,3.4vw,38px)">Новостройки в Хургаде</h1>
+        <span class="muted" id="cat-count">—</span>
+      </div>
+      <div class="row">
+        <span class="ann" data-n="1">1</span>
+        <div class="seg" role="group" aria-label="Тип рынка">
+          <button type="button" data-market="new" aria-pressed="true">Новостройки</button>
+          <button type="button" data-market="resale" aria-pressed="false">Вторичка</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="cat">
+      <aside class="filters" aria-label="Фильтры">
+        <span class="ann ann-abs" data-n="2" style="top:-11px;left:-11px">2</span>
+        <div class="field"><label for="f-city">Район</label>
+          <select class="input" id="f-city">
+            <option value="all">Вся Хургада и курорты</option>
+            <option value="city">Хургада, город</option>
+            <option value="sahl">Сахль-Хашиш</option>
+            <option value="makadi">Макади и Сома-Бей</option>
+            <option value="gouna">Эль-Гуна</option>
+          </select></div>
+        <div class="fgroup"><span class="label">Спальни</span>
+          <div class="bed-row" id="f-beds">
+            <button type="button" class="chip" data-beds="any" aria-pressed="true">Любое</button>
+            <button type="button" class="chip" data-beds="0" aria-pressed="false">Студия</button>
+            <button type="button" class="chip" data-beds="1" aria-pressed="false">1</button>
+            <button type="button" class="chip" data-beds="2" aria-pressed="false">2</button>
+            <button type="button" class="chip" data-beds="3" aria-pressed="false">3+</button>
+          </div></div>
+        <div class="field"><label for="f-max">Цена до, <span class="cur-code">USD</span></label>
+          <input class="input tnum" id="f-max" inputmode="numeric" placeholder="без ограничений"></div>
+        <div class="field"><label for="f-sea">До моря</label>
+          <select class="input" id="f-sea">
+            <option value="any">Неважно</option>
+            <option value="300">до 300 м</option>
+            <option value="500">до 500 м</option>
+            <option value="1000">до 1 км</option>
+          </select></div>
+        <label class="check"><input type="checkbox" id="f-view"> Вид на море</label>
+        <div class="field"><label for="f-vnzh">Подходит для ВНЖ</label>
+          <select class="input" id="f-vnzh">
+            <option value="0">Неважно</option>
+            <option value="50000">от $50 тыс. — ВНЖ на 1 год</option>
+            <option value="100000">от $100 тыс. — на 3 года</option>
+            <option value="200000">от $200 тыс. — на 5 лет</option>
+          </select></div>
+        <div class="fgroup" data-only="new">
+          <div class="field"><label for="f-hand">Срок сдачи</label>
+            <select class="input" id="f-hand">
+              <option value="any">Любой</option>
+              <option value="ready">Уже сдан</option>
+              <option value="2026">до конца 2026</option>
+              <option value="2027">до конца 2027</option>
+              <option value="2028">2028 и позже</option>
+            </select></div>
+          <label class="check"><input type="checkbox" id="f-inst"> Рассрочка от 5 лет</label>
+        </div>
+        <div class="fgroup" data-only="resale" hidden>
+          <label class="check"><input type="checkbox" id="f-furn"> С мебелью, можно заезжать</label>
+          <label class="check"><input type="checkbox" id="f-verified"> Проверено выездом</label>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" id="f-reset">Сбросить фильтры</button>
+        <div class="save-search">
+          <span class="row"><span class="ann" data-n="3">3</span><b class="small">Новые объекты по этому поиску</b></span>
+          <button type="button" class="btn btn-sm btn-block" data-tg><svg class="icon"><use href="#i-tg"/></svg>Получать в Telegram</button>
+        </div>
+      </aside>
+
+      <div style="min-width:0">
+        <div class="toolbar">
+          <button type="button" class="btn btn-sm m-only" id="open-filters" data-open="filter-sheet">Фильтры</button>
+          <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+            <label for="f-sort" class="label" style="white-space:nowrap">Сортировка</label>
+            <select class="input" id="f-sort" style="height:38px;width:auto">
+              <option value="price-asc">Сначала дешевле</option>
+              <option value="price-desc">Сначала дороже</option>
+              <option value="sea">Ближе к морю</option>
+            </select>
+          </div>
+          <div class="row">
+            <span class="ann" data-n="4">4</span>
+            <div class="seg seg-sm" role="group" aria-label="Вид">
+              <button type="button" data-view="list" aria-pressed="true">Список</button>
+              <button type="button" data-view="map" aria-pressed="false">Карта</button>
+            </div>
+          </div>
+        </div>
+        <div id="cat-results"></div>
+      </div>
+    </div>
+    <div class="notes" data-notes="catalog"></div>
+  </div>
+</section>
+
+<!-- =================== PROJECT =================== -->
+<section class="screen" id="project" data-screen="project" aria-label="Страница жилого комплекса">
+  <div class="wrap">
+    <div class="crumbs"><a href="#home">Главная</a><span>/</span><a href="#new">Новостройки</a><span>/</span><a href="#catalog">Хургада</a><span>/</span><span>Сахль-Хашиш</span></div>
+    <div class="obj-title">
+      <div>
+        <h1 style="font-size:clamp(28px,3.8vw,42px)">Azure Bay Residence</h1>
+        <div class="muted" style="margin-top:6px">Сахль-Хашиш, Хургада · застройщик [Застройщик А]</div>
+        <div class="badges"><span class="ann" data-n="1">1</span><span class="badge badge-solid">Строится</span><span class="badge">Сдача IV кв. 2027</span><span class="badge">250 м до моря</span><span class="badge">Собственный пляж</span><span class="badge">Рассрочка 0% на 5 лет</span></div>
+      </div>
+      <div class="row">
+        <button type="button" class="btn btn-ghost btn-sm fav-inline" data-fav="p1" aria-pressed="false"><svg class="icon"><use href="#i-heart"/></svg>В избранное</button>
+        <button type="button" class="btn btn-ghost btn-sm"><svg class="icon"><use href="#i-share"/></svg>Отправить в Telegram</button>
+      </div>
+    </div>
+    <div class="gal">
+    <div class="gallery">
+      <div class="ph"><span>главное фото / рендер</span></div>
+      <div class="ph"><span>бассейн</span></div>
+      <div class="ph"><span>пляж</span></div>
+      <div class="ph"><span>интерьер</span></div>
+      <div class="ph"><span>+ 36 фото</span></div>
+    </div>
+      <span class="gal-count m-only">1 / 40</span>
+      <div class="gallery-actions">
+        <button type="button" class="btn btn-sm"><svg class="icon"><use href="#i-video"/></svg>Видео с дрона</button>
+        <button type="button" class="btn btn-sm">Генплан</button>
+      </div>
+    </div>
+
+    <div class="obj">
+      <div class="obj-main">
+        <section>
+          <div class="facts">
+            <div><span>Застройщик</span><b>[Застройщик А]</b></div>
+            <div><span>Статус</span><b>Строится, 45%</b></div>
+            <div><span>Сдача</span><b>IV кв. 2027</b></div>
+            <div><span>До моря</span><b>250 м</b></div>
+            <div><span>Корпусов / юнитов</span><b>6 / 420</b></div>
+            <div><span>Право</span><b>Собственность</b></div>
+          </div>
+          <div style="margin-top:20px" class="skel"><i></i><i></i><i></i><i></i></div>
+          <div class="amen"><span class="chip">3 бассейна</span><span class="chip">Аквапарк</span><span class="chip">Спортзал</span><span class="chip">Охрана 24/7</span><span class="chip">Ресепшен</span><span class="chip">Управляющая компания</span></div>
+        </section>
+
+        <section>
+          <h2><span class="ann" data-n="3">3</span>Планировки и цены</h2>
+          <div class="table-wrap">
+            <table class="units">
+              <thead><tr><th>Тип</th><th class="num">Площадь</th><th class="num">Цена от</th><th class="num">В месяц*</th><th class="num">Свободно</th><th></th></tr></thead>
+              <tbody id="units"></tbody>
+            </table>
+          </div>
+          <p class="small muted" style="margin-top:10px">* при взносе 30% и рассрочке на 5 лет. Шахматка свободных юнитов по этажам — этап 2.</p>
+        </section>
+
+        <section>
+          <h2>План оплаты</h2>
+          <div class="payplan">
+            <div><span>Сейчас</span><b>Бронь <span data-usd="1000"></span></b><span>фиксирует цену на 14 дней</span></div>
+            <div><span>При подписании</span><b>Взнос 30%</b><span>договор с застройщиком</span></div>
+            <div><span>60 месяцев</span><b>Платежи 0%</b><span>ежемесячно или поквартально</span></div>
+            <div><span>IV кв. 2027</span><b>Ключи</b><span>остаток по графику</span></div>
+          </div>
+        </section>
+
+        <section>
+          <h2><span class="ann" data-n="4">4</span>Ход строительства</h2>
+          <div class="progress">
+            <figure><div class="ph"><span>фото</span></div><figcaption>ИЮНЬ 2026</figcaption></figure>
+            <figure><div class="ph"><span>фото</span></div><figcaption>ИЮЛЬ 2026</figcaption></figure>
+            <figure><div class="ph"><span>фото</span></div><figcaption>АВГУСТ 2026</figcaption></figure>
+            <figure><div class="ph"><span>видео</span></div><figcaption>СЕНТЯБРЬ 2026</figcaption></figure>
+          </div>
+        </section>
+
+        <section>
+          <h2>Расположение</h2>
+          <div class="map-row">
+            <div class="ph"><span>карта: комплекс, пляж, аэропорт, магазины</span></div>
+            <ul class="dist">
+              <li><span>Пляж</span><b>250 м</b></li>
+              <li><span>Аэропорт Хургады</span><b>[мин на машине]</b></li>
+              <li><span>Центр Хургады</span><b>[мин на машине]</b></li>
+              <li><span>Супермаркет</span><b>[мин пешком]</b></li>
+              <li><span>Клиника</span><b>[мин на машине]</b></li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h2>О застройщике</h2>
+          <div class="dev">
+            <div class="ph"><span>лого</span></div>
+            <div class="stack" style="gap:6px">
+              <b>[Застройщик А]</b>
+              <span class="muted small">Сдано проектов: [N] · В работе: [N] · На рынке с [год]</span>
+              <a href="#sitemap" class="small">Все проекты застройщика</a>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2><span class="ann" data-n="5">5</span>Документы</h2>
+          <ul class="docs">
+            <li><span>Разрешение на строительство</span><button type="button" class="btn btn-ghost btn-sm" data-tg>Запросить</button></li>
+            <li><span>Образец договора с застройщиком</span><button type="button" class="btn btn-ghost btn-sm" data-tg>Запросить</button></li>
+            <li><span>Презентация и прайс, PDF</span><button type="button" class="btn btn-ghost btn-sm" data-tg>Получить в Telegram</button></li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Похожие комплексы</h2>
+          <div class="grid" id="similar-projects"></div>
+        </section>
+      </div>
+
+      <aside class="aside" aria-label="Цена и рассрочка">
+        <span class="ann ann-abs" data-n="2" style="top:-11px;left:-11px">2</span>
+        <div>
+          <div class="muted small">Цена</div>
+          <div class="price-big"><span data-usd="54000" data-pre="от "></span></div>
+          <div class="muted small tnum"><span data-usd="1690"></span> за м²</div>
+        </div>
+        <div class="calc">
+          <b class="small">Калькулятор рассрочки</b>
+          <div class="field"><label for="c-unit">Планировка</label>
+            <select class="input" id="c-unit"></select></div>
+          <div class="field"><label for="c-dp">Первый взнос: <b id="c-dp-v">30%</b></label>
+            <input type="range" id="c-dp" min="10" max="50" step="5" value="30"></div>
+          <div class="field"><label for="c-yr">Срок: <b id="c-yr-v">5 лет</b></label>
+            <input type="range" id="c-yr" min="1" max="5" step="1" value="5"></div>
+          <div class="calc-out">
+            <span>Первый взнос</span><span id="c-down"></span>
+            <span>Платёж в месяц</span><b id="c-month"></b>
+            <span>Взнос на обслуживание при сдаче, ~10%</span><span id="c-maint"></span>
+          </div>
+        </div>
+        <a class="btn btn-primary btn-block" href="#project" data-tg><svg class="icon"><use href="#i-tg"/></svg>Планировки и прайс в Telegram</a>
+        <button type="button" class="btn btn-block"><svg class="icon"><use href="#i-video"/></svg>Онлайн-показ по видео</button>
+        <div class="manager">
+          <div class="ph"><span>фото</span></div>
+          <div><b class="small">[Имя менеджера]</b><div class="muted small">ведёт проект, отвечает в среднем за [N] мин</div></div>
+        </div>
+        <span class="ann" data-n="6" style="position:absolute;bottom:22px;right:22px">6</span>
+      </aside>
+    </div>
+    <div class="notes" data-notes="project"></div>
+  </div>
+</section>
+
+<!-- =================== LISTING =================== -->
+<section class="screen" id="listing" data-screen="listing" aria-label="Объект вторичного рынка">
+  <div class="wrap">
+    <div class="crumbs"><a href="#home">Главная</a><span>/</span><a href="#resale">Вторичка</a><span>/</span><a href="#catalog">Хургада</a><span>/</span><span>Сахль-Хашиш</span></div>
+    <div class="obj-title">
+      <div>
+        <h1 style="font-size:clamp(26px,3.6vw,40px)">1 спальня, 62 м², вид на море</h1>
+        <div class="muted" style="margin-top:6px">Сахль-Хашиш, Хургада · комплекс [название] · ID 10482</div>
+        <div class="badges"><span class="ann" data-n="1">1</span><span class="badge badge-solid">Проверено выездом 28.09.2026</span><span class="badge">200 м до моря</span><span class="badge">С мебелью</span><span class="badge">Можно заезжать</span></div>
+      </div>
+      <div class="row">
+        <button type="button" class="btn btn-ghost btn-sm fav-inline" data-fav="l2" aria-pressed="false"><svg class="icon"><use href="#i-heart"/></svg>В избранное</button>
+        <button type="button" class="btn btn-ghost btn-sm"><svg class="icon"><use href="#i-share"/></svg>Отправить в Telegram</button>
+      </div>
+    </div>
+    <div class="gal">
+    <div class="gallery">
+      <div class="ph"><span>главное фото</span></div>
+      <div class="ph"><span>гостиная</span></div>
+      <div class="ph"><span>вид с балкона</span></div>
+      <div class="ph"><span>спальня</span></div>
+      <div class="ph"><span>+ 22 фото</span></div>
+    </div>
+      <span class="gal-count m-only">1 / 26</span>
+      <div class="gallery-actions">
+        <button type="button" class="btn btn-sm"><svg class="icon"><use href="#i-video"/></svg>Видеообзор 4 мин</button>
+        <button type="button" class="btn btn-sm">Планировка</button>
+      </div>
+    </div>
+
+    <div class="obj">
+      <div class="obj-main">
+        <section>
+          <div class="facts">
+            <div><span>Площадь</span><b>62 м²</b></div>
+            <div><span>Комнаты</span><b>1 спальня + гостиная</b></div>
+            <div><span>Этаж</span><b>3 из 4</b></div>
+            <div><span>Вид</span><b>Море</b></div>
+            <div><span>Год постройки</span><b>2021</b></div>
+            <div><span>Ремонт</span><b>Готов, с мебелью и техникой</b></div>
+          </div>
+          <div style="margin-top:20px" class="skel"><i></i><i></i><i></i></div>
+        </section>
+
+        <section>
+          <h2><span class="ann" data-n="2">2</span>Сколько стоит владение</h2>
+          <div class="table-wrap">
+            <table>
+              <tbody>
+                <tr><td>Сбор за обслуживание комплекса</td><td class="num">[$ в год]</td></tr>
+                <tr><td>Коммунальные платежи</td><td class="num">[$ в месяц]</td></tr>
+                <tr><td>Расходы на оформление при покупке</td><td class="num">[% от цены]</td></tr>
+                <tr><td>Управление арендой</td><td class="num">[% от дохода]</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2><span class="ann" data-n="3">3</span>Документы проверены</h2>
+          <ul class="checklist">
+            <li><span class="box ok">✓</span><span>Договор купли-продажи с застройщиком на продавца</span></li>
+            <li><span class="box ok">✓</span><span>Подтверждение полной оплаты застройщику</span></li>
+            <li><span class="box ok">✓</span><span>Нет долгов по обслуживанию и коммунальным</span></li>
+            <li><span class="box"></span><span>Регистрация в реестре недвижимости — [статус, что это значит для покупателя]</span></li>
+          </ul>
+          <p class="small muted" style="margin-top:12px">Юрист проверяет документы до внесения депозита. Отчёт присылаем в Telegram.</p>
+        </section>
+
+        <section>
+          <h2><span class="ann" data-n="4">4</span>Доход от аренды</h2>
+          <div class="facts">
+            <div><span>Сдавался</span><b>с 2022 через УК</b></div>
+            <div><span>Загрузка за год</span><b>[N]%</b></div>
+            <div><span>Доход за 12 мес</span><b>[$], оценка УК</b></div>
+          </div>
+          <p class="small muted" style="margin-top:10px">Это оценка по прошлому году, а не гарантия дохода.</p>
+        </section>
+
+        <section>
+          <h2>Расположение</h2>
+          <div class="map-row">
+            <div class="ph"><span>карта</span></div>
+            <ul class="dist">
+              <li><span>Пляж</span><b>200 м</b></li>
+              <li><span>Аэропорт Хургады</span><b>[мин на машине]</b></li>
+              <li><span>Супермаркет</span><b>[мин пешком]</b></li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h2>Похожие объекты</h2>
+          <div class="grid" id="similar-listings"></div>
+        </section>
+      </div>
+
+      <aside class="aside" aria-label="Цена и связь">
+        <div>
+          <div class="muted small">Цена</div>
+          <div class="price-big"><span data-usd="78000"></span></div>
+          <div class="muted small tnum"><span data-usd="1258"></span> за м² · торг возможен</div>
+        </div>
+        <span class="ann ann-abs" data-n="5" style="top:-11px;left:-11px">5</span>
+        <button type="button" class="btn btn-primary btn-block"><svg class="icon"><use href="#i-video"/></svg>Записаться на онлайн-показ</button>
+        <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <a class="btn btn-sm" href="#listing" data-tg><svg class="icon"><use href="#i-tg"/></svg>Telegram</a>
+          <a class="btn btn-sm" href="#listing" data-tg><svg class="icon"><use href="#i-wa"/></svg>WhatsApp</a>
+        </div>
+        <div class="proto-msg small">Можно купить с рассрочкой от собственника: [условия]</div>
+        <div class="manager">
+          <div class="ph"><span>фото</span></div>
+          <div><b class="small">[Имя агента]</b><div class="muted small">смотрел объект лично, говорит по-русски</div></div>
+        </div>
+      </aside>
+    </div>
+    <div class="notes" data-notes="listing"></div>
+  </div>
+</section>
+
+<!-- =================== HOW TO BUY =================== -->
+<section class="screen" id="howto" data-screen="howto" aria-label="Как купить">
+  <div class="wrap">
+    <div class="crumbs"><a href="#home">Главная</a><span>/</span><span>Как купить</span></div>
+    <div style="max-width:780px;padding-block:8px 28px" class="stack">
+      <h1 style="font-size:clamp(28px,3.8vw,42px)">Как купить квартиру в Хургаде из России</h1>
+      <p class="muted" style="font-size:18px">Шаги сделки, сроки, расходы и способы оплаты. Каждый шаг можно пройти удалённо.</p>
+    </div>
+
+    <div class="section" style="padding-top:12px">
+      <div class="sec-head"><h2><span class="ann" data-n="1">1</span>Шаги сделки</h2></div>
+      <ol class="timeline">
+        <li><span class="tl-n">1</span><div><b>Подбор и онлайн-показ</b><p>Собираем подборку под бюджет и цель, показываем объекты по видеосвязи.</p></div><span class="tl-time">[срок]</span></li>
+        <li><span class="tl-n">2</span><div><b>Бронирование</b><p>Депозит фиксирует цену и снимает объект с продажи. [Сумма, возвратность.]</p></div><span class="tl-time">[срок]</span></li>
+        <li><span class="tl-n">3</span><div><b>Юридическая проверка</b><p>Права продавца или застройщика, разрешения, долги. Отчёт на русском языке.</p></div><span class="tl-time">[срок]</span></li>
+        <li><span class="tl-n">4</span><div><b>Договор и оплата</b><p>Подписание лично или по доверенности. Оплата полностью или по графику рассрочки.</p></div><span class="tl-time">[срок]</span></li>
+        <li><span class="tl-n">5</span><div><b>Оформление права собственности</b><p>[Процедура регистрации для иностранцев, что получает покупатель на руки.]</p></div><span class="tl-time">[срок]</span></li>
+        <li><span class="tl-n">6</span><div><b>Ключи, ремонт, аренда</b><p>Приёмка, меблировка, передача в управляющую компанию.</p></div><span class="tl-time">[срок]</span></li>
+      </ol>
+    </div>
+
+    <div class="section">
+      <div class="sec-head"><h2><span class="ann" data-n="2">2</span>Как оплатить из России</h2></div>
+      <p class="muted" style="max-width:70ch;margin-bottom:16px">С марта 2024 года объект в Египте регистрируют, только если деньги пришли банковским переводом в валюте из-за рубежа. От способа оплаты зависит, получите ли вы право собственности и ВНЖ.</p>
+      <div class="pay-opts">
+        <div><span class="tag tag-mvp" style="justify-self:start">Регистрация и ВНЖ</span><b>Валютный перевод через банк</b><span class="muted small">[Маршрут из РФ, сроки, комиссия, какие документы останутся у покупателя. Текст согласует юрист.]</span></div>
+        <div><span class="tag" style="justify-self:start">Зависит от схемы</span><b>Рассрочка застройщика</b><span class="muted small">[Как платить взносы из РФ каждый месяц, что будет при задержке платежа.]</span></div>
+        <div><span class="tag" style="justify-self:start">Без регистрации</span><b>Рубли, наличные, криптовалюта</b><span class="muted small">[Почему объект нельзя будет зарегистрировать и оформить ВНЖ. Честно о рисках.]</span></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head"><h2>Расходы при покупке</h2></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Статья</th><th class="num">Сумма</th><th>Кто платит</th></tr></thead>
+          <tbody>
+            <tr><td>Регистрация права собственности</td><td class="num">[%]</td><td>[покупатель]</td></tr>
+            <tr><td>Юридическое сопровождение</td><td class="num">[$]</td><td>[покупатель]</td></tr>
+            <tr><td>Комиссия агентства</td><td class="num">[%]</td><td>[застройщик / продавец]</td></tr>
+            <tr><td>Перевод и нотариальное заверение доверенности</td><td class="num">[$]</td><td>[покупатель]</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head"><h2><span class="ann" data-n="3">3</span>ВНЖ через покупку недвижимости</h2></div>
+      <div class="facts">
+        <div><span>от $50 тыс.</span><b>ВНЖ на 1 год</b></div>
+        <div><span>от $100 тыс.</span><b>ВНЖ на 3 года</b></div>
+        <div><span>от $200 тыс.</span><b>ВНЖ на 5 лет</b></div>
+      </div>
+      <p class="small muted" style="margin-top:10px">Объект должен быть зарегистрирован. Пороги зависят от порядка подачи — [проверяет юрист перед публикацией].</p>
+      <div class="row" style="margin-top:16px"><a class="btn btn-ghost btn-sm" href="#catalog">Объекты, подходящие для ВНЖ</a></div>
+    </div>
+
+    <div class="section">
+      <div class="cta-band">
+        <div class="stack" style="gap:6px;max-width:560px">
+          <h2>Бесплатная консультация по сделке</h2>
+          <p class="muted">30 минут с юристом в Telegram или Zoom. Разберём ваш случай: бюджет, оплата, ВНЖ.</p>
+        </div>
+        <a class="btn btn-primary" href="#howto" data-tg><svg class="icon"><use href="#i-tg"/></svg>Записаться</a>
+      </div>
+    </div>
+    <div class="notes" data-notes="howto"></div>
+  </div>
+</section>
+
+<!-- =================== SITEMAP =================== -->
+<section class="screen" id="sitemap" data-screen="sitemap" aria-label="Карта сайта">
+  <div class="wrap">
+    <div class="stack" style="padding-block:28px 24px;max-width:760px">
+      <h1 style="font-size:clamp(28px,3.8vw,42px)">Карта сайта</h1>
+      <p class="muted">Все разделы первой версии и что уходит на следующие этапы. Этот экран — для команды, на сайте его не будет.</p>
+      <div class="legend"><span class="tag tag-mvp">MVP</span> входит в первый запуск <span class="tag">Этап 2</span> после запуска <span class="tag">Этап 3</span> по результатам спроса</div>
+    </div>
+    <div class="tree-root"><span class="node">Главная</span></div>
+    <div class="tree">
+      <div class="branch"><b>Каталог</b><ul>
+        <li>Новостройки: список и карта <span class="tag tag-mvp">MVP</span></li>
+        <li>Страница ЖК <span class="tag tag-mvp">MVP</span></li>
+        <li>Вторичка: список и карта <span class="tag tag-mvp">MVP</span></li>
+        <li>Карточка объекта <span class="tag tag-mvp">MVP</span></li>
+        <li>Подборки: у моря, рассрочка, до $50 тыс., для ВНЖ, под аренду <span class="tag tag-mvp">MVP</span></li>
+        <li>Шахматка свободных юнитов <span class="tag">Этап 2</span></li>
+      </ul></div>
+      <div class="branch"><b>Районы Хургады</b><ul>
+        <li>Центр: Дахар и Сакалла <span class="tag tag-mvp">MVP</span></li>
+        <li>Эль-Мамша и Интерконти <span class="tag tag-mvp">MVP</span></li>
+        <li>Арабия, Кавсар, Ахья <span class="tag tag-mvp">MVP</span></li>
+        <li>Сахль-Хашиш <span class="tag tag-mvp">MVP</span></li>
+        <li>Макади и Сома-Бей <span class="tag tag-mvp">MVP</span></li>
+        <li>Эль-Гуна <span class="tag tag-mvp">MVP</span></li>
+        <li>Шарм и Северное побережье <span class="tag">Этап 3</span></li>
+      </ul></div>
+      <div class="branch"><b>Покупателю</b><ul>
+        <li>Как купить удалённо <span class="tag tag-mvp">MVP</span></li>
+        <li>Оплата из России <span class="tag tag-mvp">MVP</span></li>
+        <li>Расходы и налоги <span class="tag tag-mvp">MVP</span></li>
+        <li>ВНЖ через покупку <span class="tag tag-mvp">MVP</span></li>
+        <li>Частые вопросы <span class="tag tag-mvp">MVP</span></li>
+      </ul></div>
+      <div class="branch"><b>Застройщики</b><ul>
+        <li>Список застройщиков <span class="tag">Этап 2</span></li>
+        <li>Страница застройщика <span class="tag">Этап 2</span></li>
+      </ul></div>
+      <div class="branch"><b>Инвестиции</b><ul>
+        <li>Калькулятор доходности <span class="tag">Этап 2</span></li>
+        <li>Управление арендой <span class="tag">Этап 2</span></li>
+        <li>Кейсы владельцев <span class="tag">Этап 3</span></li>
+      </ul></div>
+      <div class="branch"><b>Услуги</b><ul>
+        <li>Подбор и онлайн-показ <span class="tag tag-mvp">MVP</span></li>
+        <li>Юридическое сопровождение <span class="tag tag-mvp">MVP</span></li>
+        <li>Продать свой объект <span class="tag tag-mvp">MVP</span></li>
+      </ul></div>
+      <div class="branch"><b>О компании</b><ul>
+        <li>Команда и офис <span class="tag tag-mvp">MVP</span></li>
+        <li>Отзывы <span class="tag tag-mvp">MVP</span></li>
+        <li>Контакты <span class="tag tag-mvp">MVP</span></li>
+      </ul></div>
+      <div class="branch"><b>Блог</b><ul>
+        <li>Статьи и новости рынка <span class="tag">Этап 2</span></li>
+      </ul></div>
+      <div class="branch"><b>Личное</b><ul>
+        <li>Избранное без регистрации <span class="tag tag-mvp">MVP</span></li>
+        <li>Сравнение объектов <span class="tag">Этап 2</span></li>
+        <li>Сохранённые поиски в Telegram <span class="tag">Этап 2</span></li>
+      </ul></div>
+      <div class="branch"><b>Служебные</b><ul>
+        <li>Политика обработки данных, согласие <span class="tag tag-mvp">MVP</span></li>
+        <li>Страница 404 <span class="tag tag-mvp">MVP</span></li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div><h4>Каталог</h4><ul><li><a href="#new">Новостройки</a></li><li><a href="#resale">Вторичка</a></li><li><a href="#catalog">Подборки</a></li><li><a href="#sitemap">Районы</a></li></ul></div>
+      <div><h4>Покупателю</h4><ul><li><a href="#howto">Как купить</a></li><li><a href="#howto">Оплата из России</a></li><li><a href="#howto">ВНЖ</a></li><li><a href="#home">Частые вопросы</a></li></ul></div>
+      <div><h4>Компания</h4><ul><li><a href="#sitemap">О нас</a></li><li><a href="#sitemap">Отзывы</a></li><li><a href="#sitemap">Продать объект</a></li></ul></div>
+      <div><h4>Связаться</h4><ul><li>Telegram: [@username]</li><li>WhatsApp: [+20 …]</li><li>Телефон в РФ: [+7 …]</li><li>Офис: [адрес в Хургаде]</li></ul></div>
+    </div>
+    <div class="foot-legal"><span>© MARU [рабочее название]</span><span>Политика обработки персональных данных</span><span>Согласие на обработку данных</span><span><b>Прототип: все объекты, цены и курсы валют вымышлены</b></span></div>
+  </div>
+</footer>
+
+<div class="mbar" id="mbar" aria-label="Связаться"></div>
+</div><!-- /frame -->
+
+<div class="sheet" id="menu-sheet" role="dialog" aria-label="Меню" hidden>
+  <div class="sheet-head"><b>MARU</b><button type="button" class="sheet-close" data-close aria-label="Закрыть меню">×</button></div>
+  <div class="sheet-body">
+    <ul class="menu-links">
+      <li><a href="#new">Новостройки</a></li>
+      <li><a href="#resale">Вторичка</a></li>
+      <li><a href="#sitemap">Районы Хургады</a></li>
+      <li><a href="#howto">Как купить</a></li>
+      <li><a href="#sitemap">Инвестиции</a></li>
+      <li><a href="#sitemap">О компании</a></li>
+      <li><a href="#catalog">Избранное · <span id="fav-n2" class="tnum">0</span></a></li>
+    </ul>
+    <div class="stack" style="margin-top:24px">
+      <span class="label">Отвечаем с 9 до 21 по Москве</span>
+      <a class="btn btn-primary btn-block" href="#home" data-tg><svg class="icon"><use href="#i-tg"/></svg>Telegram</a>
+      <a class="btn btn-block" href="#home" data-tg><svg class="icon"><use href="#i-wa"/></svg>WhatsApp</a>
+      <a class="btn btn-block" href="#home" data-tg>MAX</a>
+      <span class="small muted">Телефон в РФ: [+7 …]</span>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="filter-sheet" role="dialog" aria-label="Фильтры" hidden>
+  <div class="sheet-head"><b>Фильтры</b><button type="button" class="sheet-close" data-close aria-label="Закрыть фильтры">×</button></div>
+  <div class="sheet-body" id="filter-body"></div>
+  <div class="sheet-foot"><button type="button" class="btn btn-primary btn-block" id="apply-filters" data-close>Показать</button></div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</div><!-- /device -->
+<aside class="mnotes" id="mnotes" aria-label="Заметки к мобильной версии"></aside>
+</div><!-- /device-wrap -->
+
+<script>
+(function () {
+  "use strict";
+  // Демо-курсы для прототипа, не реальные
+  var RATES = { USD: 1, RUB: 85, EUR: 0.86 };
+  var state = { cur: "USD", market: "new", view: "list", beds: "any", fav: new Set(), hMarket: "new" };
+
+  var PROJECTS = [
+    { id: "p1", name: "Azure Bay Residence", city: "sahl", area: "Сахль-Хашиш", sea: 250, view: true, hand: "IV кв. 2027", hy: 2027, status: "Строится", from: 54000, dp: 30, years: 5, beds: [0, 1, 2], badges: ["Рассрочка 5 лет", "Свой пляж"], x: 62, y: 66 },
+    { id: "p2", name: "Coral Garden", city: "city", area: "Аль-Ахья, Хургада", sea: 600, view: false, hand: "II кв. 2027", hy: 2027, status: "Строится", from: 31000, dp: 20, years: 3, beds: [0, 1], badges: ["Взнос 20%"], x: 38, y: 24 },
+    { id: "p3", name: "Palm Lagoon", city: "gouna", area: "Эль-Гуна", sea: 150, view: true, hand: "I кв. 2028", hy: 2028, status: "Котлован", from: 96000, dp: 5, years: 8, beds: [1, 2, 3], badges: ["Взнос 5%", "Рассрочка 8 лет"], x: 30, y: 10 },
+    { id: "p4", name: "Mamsha Promenade", city: "city", area: "Эль-Мамша, Хургада", sea: 100, view: true, hand: "Сдан", hy: 0, status: "Сдан", from: 42000, dp: 50, years: 2, beds: [0, 1, 2], badges: ["Можно заезжать"], x: 50, y: 44 },
+    { id: "p5", name: "Soma Shores", city: "makadi", area: "Сома-Бей", sea: 200, view: true, hand: "IV кв. 2028", hy: 2028, status: "Котлован", from: 120000, dp: 10, years: 7, beds: [1, 2, 3], badges: ["Рассрочка 7 лет"], x: 74, y: 90 },
+    { id: "p6", name: "Makadi Shores", city: "makadi", area: "Макади", sea: 400, view: true, hand: "IV кв. 2026", hy: 2026, status: "Отделка", from: 48000, dp: 25, years: 3, beds: [0, 1, 2], badges: ["Сдача в 2026"], x: 68, y: 80 }
+  ];
+  var LISTINGS = [
+    { id: "l1", title: "Студия, 34 м²", city: "city", area: "Интерконти, Хургада", beds: 0, m2: 34, floor: "3/5 этаж", sea: 650, view: false, furn: true, ver: true, price: 36500, x: 54, y: 50 },
+    { id: "l2", title: "1 спальня, 62 м²", city: "sahl", area: "Сахль-Хашиш", beds: 1, m2: 62, floor: "3/4 этаж", sea: 200, view: true, furn: true, ver: true, price: 78000, x: 62, y: 64 },
+    { id: "l3", title: "2 спальни, 95 м²", city: "city", area: "Эль-Мамша, Хургада", beds: 2, m2: 95, floor: "2/6 этаж", sea: 100, view: true, furn: true, ver: false, price: 112000, x: 50, y: 42 },
+    { id: "l4", title: "Вилла, 3 спальни, 210 м²", city: "gouna", area: "Эль-Гуна", beds: 3, m2: 210, floor: "2 этажа", sea: 50, view: true, furn: false, ver: true, price: 420000, x: 28, y: 12 },
+    { id: "l5", title: "1 спальня, 48 м²", city: "city", area: "Магавиш, Хургада", beds: 1, m2: 48, floor: "1/3 этаж", sea: 300, view: false, furn: true, ver: true, price: 52000, x: 58, y: 56 },
+    { id: "l6", title: "Студия, 28 м²", city: "city", area: "Сакалла, Хургада", beds: 0, m2: 28, floor: "4/5 этаж", sea: 900, view: false, furn: true, ver: false, price: 29900, x: 44, y: 36 },
+    { id: "l7", title: "2 спальни, 88 м²", city: "makadi", area: "Макади", beds: 2, m2: 88, floor: "5/12 этаж", sea: 400, view: true, furn: false, ver: true, price: 98000, x: 68, y: 78 }
+  ];
+  var UNITS = [
+    { t: "Студия", m2: 32, price: 54000, left: 12 },
+    { t: "1 спальня", m2: 48, price: 76000, left: 8 },
+    { t: "2 спальни", m2: 78, price: 112000, left: 3 },
+    { t: "Пентхаус, 2 спальни + терраса", m2: 120, price: 185000, left: 1 }
+  ];
+  var COLLECTIONS = ["С рассрочкой 0%", "До 300 м до моря", "До $50 000", "Готовые с мебелью", "Подходят для ВНЖ", "Под сдачу в аренду"];
+
+  var NOTES = {
+    home: [
+      "Валюта и Telegram видны всегда: покупатель из России считает в рублях и общается в мессенджере, а не по форме.",
+      "Поиск с первого экрана: сразу выбор «новостройка / вторичка», бюджет в выбранной валюте.",
+      "Полоса доверия. Каждый пункт подтверждается фактом: адрес и фото офиса, имя юриста, запись показа.",
+      "Подборки — готовые посадочные страницы для SEO и рекламы, у каждой свой адрес.",
+      "Карточка ЖК показывает платёж в месяц и срок рассрочки, а не только полную цену.",
+      "«Как купить удалённо» снимает главный страх — сделку на расстоянии. Ведёт на подробную страницу.",
+      "Квиз — основной лид-магнит. Контакт только «имя + мессенджер», без телефона и e-mail.",
+      "Видео-отзывы с привязкой к купленному объекту — главный сигнал доверия в нише."
+    ],
+    catalog: [
+      "Один каталог, два режима. Новостройки показываем комплексами, вторичку — отдельными квартирами.",
+      "Набор фильтров меняется с типом рынка: у новостроек срок сдачи и рассрочка, у вторички мебель и проверка. Фильтр «Подходит для ВНЖ» отбирает объекты по порогам $50, 100 и 200 тыс.",
+      "«Сохранить поиск» = подписка через Telegram-бота: новые объекты по фильтру приходят в мессенджер.",
+      "Карта с ценами на пинах; список и карта синхронизированы. Пустая выдача предлагает написать менеджеру."
+    ],
+    project: [
+      "Бейджи статуса: стройка, срок сдачи, расстояние до моря, рассрочка — то, что спрашивают первым.",
+      "Липкий блок с калькулятором рассрочки: платёж в месяц и взнос на обслуживание при сдаче (около 10–12% цены), о котором конкуренты молчат.",
+      "Таблица планировок: площадь, цена, платёж в месяц, сколько юнитов осталось.",
+      "Ход строительства по месяцам снижает страх перед покупкой на этапе котлована.",
+      "Документы выдаём по запросу в Telegram — так появляется контакт с покупателем.",
+      "Живой менеджер с фото и временем ответа вместо безличной формы."
+    ],
+    listing: [
+      "Бейдж «Проверено выездом» с датой — защита от фейковых и устаревших объявлений.",
+      "Полная стоимость владения: обслуживание, коммунальные платежи, оформление, управление.",
+      "Чек-лист документов с понятным статусом. Незакрытый пункт объясняем, а не прячем.",
+      "Доход от аренды подаём как оценку по прошлому году, без обещаний.",
+      "Главный CTA вторички — онлайн-показ, второй — мессенджеры."
+    ],
+    howto: [
+      "Сделка как линия шагов со сроками. Каждый шаг — отдельный якорь, на него ведём из рекламы и FAQ.",
+      "Оплата из России — главный вопрос в нише. Делим способы на «даёт регистрацию и ВНЖ» и «не даёт»: конкуренты об этом молчат.",
+      "Блок ВНЖ связан с фильтром каталога «Подходит для ВНЖ». Пороги из исследования рынка, перед запуском их проверяет юрист."
+    ]
+  };
+
+  function fmt(usd, cur) {
+    cur = cur || state.cur;
+    var v = usd * RATES[cur];
+    if (cur === "RUB") { v = Math.round(v / 1000) * 1000; return v.toLocaleString("ru-RU") + " ₽"; }
+    v = Math.round(v);
+    return (cur === "USD" ? "$" : "€") + v.toLocaleString("ru-RU");
+  }
+  function fmtShort(usd) {
+    var v = usd * RATES[state.cur];
+    if (state.cur === "RUB") return (Math.round(v / 1e5) / 10).toLocaleString("ru-RU") + " млн ₽";
+    return (state.cur === "USD" ? "$" : "€") + Math.round(v / 1000) + " тыс.";
+  }
+  function monthly(price, dp, years) { return price * (1 - dp / 100) / (years * 12); }
+  function bedsLabel(b) { return b === 0 ? "Студия" : b + (b === 1 ? " спальня" : " спальни"); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function heart(id) { return '<button type="button" class="fav" data-fav="' + id + '" aria-pressed="' + state.fav.has(id) + '" aria-label="В избранное"><svg class="icon"><use href="#i-heart"/></svg></button>'; }
+
+  function projectCard(p) {
+    var types = p.beds.map(function (b) { return b === 0 ? "студии" : b === 1 ? "1 спальня" : b === 3 ? "3+ спальни" : b + " спальни"; }).join(", ");
+    return '<article class="card">' +
+      '<a href="#project" class="ph card-media"><span>фото ЖК</span></a>' +
+      '<div class="card-badges"><span class="badge badge-solid">' + esc(p.status) + '</span>' + p.badges.map(function (b) { return '<span class="badge">' + esc(b) + "</span>"; }).join("") + "</div>" +
+      heart(p.id) +
+      '<div class="card-body">' +
+      '<span class="card-kicker">' + esc(p.area) + "</span>" +
+      '<h3><a href="#project">' + esc(p.name) + "</a></h3>" +
+      '<span class="card-meta">' + (p.hy ? "Сдача " + esc(p.hand) : "Дом сдан") + " · " + p.sea + " м до моря · " + types + "</span>" +
+      '<span class="card-price" data-usd="' + p.from + '" data-pre="от "></span>' +
+      '<span class="card-sub">Взнос ' + p.dp + "%, " + p.years + " " + (p.years < 5 ? "года" : "лет") + ' · <span data-usd="' + Math.round(monthly(p.from, p.dp, p.years)) + '" data-pre="от " data-post=" в мес"></span></span>' +
+      '<span class="card-sub">Цены проверены 01.10.2026</span>' +
+      "</div></article>";
+  }
+  function listingCard(l) {
+    return '<article class="card">' +
+      '<a href="#listing" class="ph card-media"><span>фото объекта</span></a>' +
+      '<div class="card-badges">' + (l.ver ? '<span class="badge badge-solid">Проверено 28.09</span>' : "") + (l.usuf ? '<span class="badge">Узуфрукт</span>' : "") + (l.view ? '<span class="badge">Вид на море</span>' : "") + "</div>" +
+      heart(l.id) +
+      '<div class="card-body">' +
+      '<span class="card-kicker">' + esc(l.area) + "</span>" +
+      '<h3><a href="#listing">' + esc(l.title) + "</a></h3>" +
+      '<span class="card-meta">' + esc(l.floor) + " · " + l.sea + " м до моря" + (l.furn ? " · с мебелью" : "") + "</span>" +
+      '<span class="card-price" data-usd="' + l.price + '"></span>' +
+      '<span class="card-sub"><span data-usd="' + Math.round(l.price / l.m2) + '" data-post=" за м²"></span></span>' +
+      "</div></article>";
+  }
+
+  function paintPrices(root) {
+    (root || document).querySelectorAll("[data-usd]").forEach(function (el) {
+      el.textContent = (el.dataset.pre || "") + fmt(Number(el.dataset.usd)) + (el.dataset.post || "");
+    });
+    document.querySelectorAll(".cur-code").forEach(function (el) { el.textContent = state.cur; });
+    document.querySelectorAll(".pin").forEach(function (el) { el.textContent = fmtShort(Number(el.dataset.pin)); });
+  }
+
+  /* ---------- catalog ---------- */
+  function readMax(id) {
+    var raw = (document.getElementById(id).value || "").replace(/\D/g, "");
+    return raw ? Number(raw) / RATES[state.cur] : Infinity;
+  }
+  function renderCatalog() {
+    var isNew = state.market === "new";
+    document.querySelectorAll("[data-market]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.market === state.market)); });
+    document.querySelectorAll("[data-only]").forEach(function (g) { g.hidden = g.dataset.only !== state.market; });
+    var title = isNew ? "Новостройки в Хургаде" : "Вторичка в Хургаде";
+    document.getElementById("cat-title").textContent = title;
+    document.getElementById("cat-crumb").textContent = title;
+
+    var city = document.getElementById("f-city").value;
+    var max = readMax("f-max");
+    var sea = document.getElementById("f-sea").value;
+    var view = document.getElementById("f-view").checked;
+    var vnzh = Number(document.getElementById("f-vnzh").value);
+    var beds = state.beds;
+    var items;
+    if (isNew) {
+      var hand = document.getElementById("f-hand").value;
+      var inst = document.getElementById("f-inst").checked;
+      items = PROJECTS.filter(function (p) {
+        if (city !== "all" && p.city !== city) return false;
+        if (p.from > max) return false;
+        if (sea !== "any" && p.sea > Number(sea)) return false;
+        if (view && !p.view) return false;
+        if (vnzh && p.from < vnzh) return false;
+        if (beds !== "any" && p.beds.indexOf(Number(beds)) < 0) return false;
+        if (inst && p.years < 5) return false;
+        if (hand === "ready" && p.hy !== 0) return false;
+        if (hand === "2026" && !(p.hy !== 0 && p.hy <= 2026)) return false;
+        if (hand === "2027" && !(p.hy !== 0 && p.hy <= 2027)) return false;
+        if (hand === "2028" && p.hy < 2028) return false;
+        return true;
+      });
+    } else {
+      var furn = document.getElementById("f-furn").checked;
+      var ver = document.getElementById("f-verified").checked;
+      items = LISTINGS.filter(function (l) {
+        if (city !== "all" && l.city !== city) return false;
+        if (l.price > max) return false;
+        if (sea !== "any" && l.sea > Number(sea)) return false;
+        if (view && !l.view) return false;
+        if (vnzh && l.price < vnzh) return false;
+        if (beds !== "any" && (Number(beds) === 3 ? l.beds < 3 : l.beds !== Number(beds))) return false;
+        if (furn && !l.furn) return false;
+        if (ver && !l.ver) return false;
+        return true;
+      });
+    }
+    var sort = document.getElementById("f-sort").value;
+    var price = function (x) { return isNew ? x.from : x.price; };
+    items.sort(function (a, b) {
+      if (sort === "price-desc") return price(b) - price(a);
+      if (sort === "sea") return a.sea - b.sea;
+      return price(a) - price(b);
+    });
+    var n = items.length;
+    document.getElementById("cat-count").textContent = isNew
+      ? "Найдено " + n + " " + (n === 1 ? "комплекс" : n > 1 && n < 5 ? "комплекса" : "комплексов") + " · демо-данные"
+      : "Найдено " + n + " " + (n === 1 ? "объект" : n > 1 && n < 5 ? "объекта" : "объектов") + " · демо-данные";
+    var k = activeFilters();
+    document.getElementById("open-filters").textContent = k ? "Фильтры · " + k : "Фильтры";
+    document.getElementById("apply-filters").textContent = n ? "Показать " + n + " " + (isNew ? (n === 1 ? "комплекс" : n < 5 ? "комплекса" : "комплексов") : (n === 1 ? "объект" : n < 5 ? "объекта" : "объектов")) : "Ничего не найдено — изменить фильтры";
+
+    var out = document.getElementById("cat-results");
+    if (!n) {
+      out.innerHTML = '<div class="empty"><b>По этим фильтрам ничего нет</b><span class="muted">Попробуйте убрать ограничение по расстоянию до моря или напишите нам: подберём вручную, в том числе объекты до выхода в продажу.</span><a class="btn btn-primary" href="#catalog" data-tg><svg class="icon"><use href="#i-tg"/></svg>Написать менеджеру</a></div>';
+      return;
+    }
+    var card = isNew ? projectCard : listingCard;
+    if (state.view === "list") {
+      out.innerHTML = '<div class="grid">' + items.map(card).join("") + "</div>";
+    } else {
+      var href = isNew ? "#project" : "#listing";
+      out.innerHTML = '<div class="mapview"><div class="ph map"><span>карта Google / Яндекс</span>' +
+        items.map(function (x) { return '<a class="pin" href="' + href + '" style="left:' + x.x + "%;top:" + x.y + '%" data-pin="' + price(x) + '"></a>'; }).join("") +
+        '</div><div class="maplist">' +
+        items.map(function (x) {
+          return '<a class="mini" href="' + href + '"><div class="ph"><span>фото</span></div><div class="card-body"><span class="card-kicker">' + esc(x.area) + '</span><b>' + esc(isNew ? x.name : x.title) + '</b><span class="tnum" style="font-weight:700" data-usd="' + price(x) + '"' + (isNew ? ' data-pre="от "' : "") + "></span></div></a>";
+        }).join("") + "</div></div>";
+    }
+    paintPrices(out);
+  }
+
+  /* ---------- project calculator ---------- */
+  function renderCalc() {
+    var sel = document.getElementById("c-unit");
+    var u = UNITS[Number(sel.value) || 0];
+    var dp = Number(document.getElementById("c-dp").value);
+    var yr = Number(document.getElementById("c-yr").value);
+    document.getElementById("c-dp-v").textContent = dp + "%";
+    document.getElementById("c-yr-v").textContent = yr + " " + (yr === 1 ? "год" : yr < 5 ? "года" : "лет");
+    document.getElementById("c-down").textContent = fmt(u.price * dp / 100);
+    document.getElementById("c-month").textContent = fmt(monthly(u.price, dp, yr));
+    document.getElementById("c-maint").textContent = fmt(u.price * 0.1);
+  }
+  function renderUnits() {
+    document.getElementById("units").innerHTML = UNITS.map(function (u) {
+      return "<tr><td>" + esc(u.t) + '</td><td class="num" data-label="Площадь">' + u.m2 + ' м²</td><td class="num" data-label="Цена от" data-usd="' + u.price + '"></td><td class="num" data-label="В месяц" data-usd="' + Math.round(monthly(u.price, 30, 5)) + '"></td><td class="num" data-label="Свободно">' + u.left + '</td><td><button type="button" class="btn btn-ghost btn-sm">Планировка</button></td></tr>';
+    }).join("");
+    document.getElementById("c-unit").innerHTML = UNITS.map(function (u, i) { return '<option value="' + i + '">' + esc(u.t) + ", " + u.m2 + " м²</option>"; }).join("");
+  }
+
+  /* ---------- quiz ---------- */
+  var QUIZ = [
+    { q: "Для чего покупаете?", a: ["Отдыхать самим", "Сдавать в аренду", "Переезд и ВНЖ", "Сохранить деньги в валюте"] },
+    { q: "Какой бюджет?", a: ["до $40 000", "$40 000 – 80 000", "$80 000 – 150 000", "больше $150 000"] },
+    { q: "Когда готовы купить?", a: ["В ближайший месяц", "В течение 3 месяцев", "Присматриваюсь"] }
+  ];
+  var quizStep = 0;
+  function renderQuiz() {
+    var body = document.getElementById("quiz-body");
+    var bars = QUIZ.concat([{}]).map(function (_, i) { return '<i class="' + (i <= quizStep ? "done" : "") + '"></i>'; }).join("");
+    if (quizStep < QUIZ.length) {
+      var s = QUIZ[quizStep];
+      body.innerHTML = '<div class="quiz-progress">' + bars + '</div><p class="mono small muted" style="margin-bottom:8px">ВОПРОС ' + (quizStep + 1) + " ИЗ " + QUIZ.length + '</p><h3 style="font-size:20px;margin-bottom:14px">' + esc(s.q) + '</h3><div class="quiz-opts">' +
+        s.a.map(function (a) { return '<button type="button" class="quiz-opt" data-q>' + esc(a) + "</button>"; }).join("") + "</div>";
+    } else if (quizStep === QUIZ.length) {
+      body.innerHTML = '<div class="quiz-progress">' + bars + '</div><h3 style="font-size:20px;margin-bottom:14px">Куда прислать подборку?</h3>' +
+        '<form id="quiz-form" class="stack"><div class="seg" role="group" aria-label="Мессенджер"><button type="button" aria-pressed="true">Telegram</button><button type="button" aria-pressed="false">WhatsApp</button></div>' +
+        '<div class="field"><label for="q-name">Как к вам обращаться</label><input class="input" id="q-name" autocomplete="off"></div>' +
+        '<div class="field"><label for="q-contact">Ник в Telegram или номер</label><input class="input" id="q-contact" autocomplete="off"></div>' +
+        '<button class="btn btn-primary" type="submit">Получить подборку</button><span class="small muted">Нажимая кнопку, вы соглашаетесь с политикой обработки данных.</span></form>';
+    } else {
+      body.innerHTML = '<div class="proto-msg"><b>Это прототип: заявка никуда не отправляется.</b><br>На живом сайте здесь — «Спасибо, менеджер напишет в течение 15 минут» и ссылка на Telegram-канал.</div><button type="button" class="btn btn-ghost btn-sm" style="margin-top:12px" id="quiz-restart">Пройти заново</button>';
+    }
+  }
+
+  /* ---------- favourites ---------- */
+  function syncFav() {
+    document.getElementById("fav-n").textContent = state.fav.size;
+    document.getElementById("fav-n2").textContent = state.fav.size;
+    document.querySelectorAll("[data-fav]").forEach(function (b) { b.setAttribute("aria-pressed", String(state.fav.has(b.dataset.fav))); });
+  }
+
+  /* ---------- notes ---------- */
+  function renderNotes() {
+    document.querySelectorAll("[data-notes]").forEach(function (box) {
+      var key = box.dataset.notes, list = NOTES[key] || [];
+      box.innerHTML = "<h3>Заметки к экрану</h3><ol>" + list.map(function (t, i) { return '<li><span class="ann">' + (i + 1) + "</span><span>" + esc(t) + "</span></li>"; }).join("") + "</ol>";
+      var screen = box.closest("[data-screen]");
+      screen.querySelectorAll(".ann[data-n]").forEach(function (dot) { var t = list[Number(dot.dataset.n) - 1]; if (t) dot.title = t; });
+    });
+    var headDot = document.querySelector(".ann-head");
+    if (headDot) headDot.title = NOTES.home[0];
+  }
+
+  /* ---------- router ---------- */
+  var SCREENS = ["home", "catalog", "project", "listing", "howto", "sitemap"];
+  function route() {
+    var h = location.hash.replace("#", "") || "home";
+    if (h === "new" || h === "resale") { state.market = h; h = "catalog"; }
+    if (SCREENS.indexOf(h) < 0) h = "home";
+    document.querySelectorAll("[data-screen]").forEach(function (s) { s.classList.toggle("on", s.dataset.screen === h); });
+    document.querySelectorAll("[data-nav]").forEach(function (a) { if (a.dataset.nav === h) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    var headDot = document.querySelector(".ann-head");
+    if (headDot) headDot.hidden = h !== "home";
+    if (h === "catalog") renderCatalog();
+    closeSheets();
+    renderMbar(h);
+    renderMNotes(h);
+    window.scrollTo(0, 0);
+    frame.scrollTop = 0;
+  }
+
+  /* ---------- mobile: width classes, sheets, bottom bar, notes ---------- */
+  var device = document.getElementById("device"), frame = document.getElementById("frame"), wrapEl = document.getElementById("device-wrap");
+  var filtersEl = document.querySelector(".filters"), catEl = document.querySelector(".cat"), filterBody = document.getElementById("filter-body");
+  function applyWidth() {
+    var w = device.clientWidth;
+    var mobile = w <= 760;
+    device.classList.toggle("t", w <= 1020);
+    device.classList.toggle("m", mobile);
+    if (mobile && filtersEl.parentNode !== filterBody) filterBody.appendChild(filtersEl);
+    if (!mobile && filtersEl.parentNode !== catEl) { catEl.insertBefore(filtersEl, catEl.firstChild); closeSheets(); }
+  }
+  function setPhone(on) {
+    wrapEl.classList.toggle("phone", on);
+    document.querySelectorAll("[data-vmode]").forEach(function (b) { b.setAttribute("aria-pressed", String((b.dataset.vmode === "phone") === on)); });
+    try { localStorage.setItem("maru-phone", on ? "1" : "0"); } catch (err) {}
+    applyWidth();
+    closeSheets();
+    window.scrollTo(0, 0);
+    frame.scrollTop = 0;
+  }
+  function openSheet(id) {
+    closeSheets();
+    document.getElementById(id).hidden = false;
+    if (!wrapEl.classList.contains("phone")) document.body.style.overflow = "hidden";
+  }
+  function closeSheets() {
+    document.querySelectorAll(".sheet").forEach(function (s) { s.hidden = true; });
+    document.body.style.overflow = "";
+  }
+  function activeFilters() {
+    var k = 0, v = function (id) { return document.getElementById(id); };
+    if (v("f-city").value !== "all") k++;
+    if (state.beds !== "any") k++;
+    if (v("f-max").value.replace(/\D/g, "")) k++;
+    if (v("f-sea").value !== "any") k++;
+    if (v("f-view").checked) k++;
+    if (v("f-vnzh").value !== "0") k++;
+    if (state.market === "new") { if (v("f-hand").value !== "any") k++; if (v("f-inst").checked) k++; }
+    else { if (v("f-furn").checked) k++; if (v("f-verified").checked) k++; }
+    return k;
+  }
+  function renderMbar(h) {
+    var bar = document.getElementById("mbar");
+    if (h === "project") {
+      bar.className = "mbar mbar-price";
+      bar.innerHTML = '<div class="mp"><b data-usd="54000" data-pre="от "></b><span data-usd="630" data-pre="от " data-post=" в мес, 0%"></span></div><a class="btn btn-primary" href="#project" data-tg><svg class="icon"><use href="#i-tg"/></svg>Написать</a>';
+    } else if (h === "listing") {
+      bar.className = "mbar mbar-price";
+      bar.innerHTML = '<div class="mp"><b data-usd="78000"></b><span data-usd="1258" data-post=" за м²"></span></div><button type="button" class="btn btn-primary"><svg class="icon"><use href="#i-video"/></svg>Онлайн-показ</button>';
+    } else {
+      bar.className = "mbar";
+      bar.innerHTML = '<a class="btn btn-primary" href="#home" data-tg><svg class="icon"><use href="#i-tg"/></svg>Telegram</a><a class="btn" href="#home" data-tg><svg class="icon"><use href="#i-wa"/></svg>WhatsApp</a><a class="btn" href="#home" data-tg><svg class="icon"><use href="#i-phone"/></svg>Звонок</a>';
+    }
+    paintPrices(bar);
+  }
+  var MNOTES = {
+    home: ["Главная", [
+      "Шапка: логотип, валюта и меню. Разделы и мессенджеры — в шторке меню, а Telegram, WhatsApp и звонок всегда в нижней панели под пальцем.",
+      "Первый экран — заголовок и поиск. Видео с дрона убрано: на телефоне оно отодвигает поиск и тратит трафик.",
+      "Подборки, карточки ЖК, шаги сделки и отзывы листаются свайпом, страница не превращается в бесконечную ленту.",
+      "Районы — плитки в две колонки, каждая ведёт на страницу района.",
+      "Квиз на всю ширину, ответы — крупные кнопки от 52 px."]],
+    catalog: ["Каталог", [
+      "Липкая панель сверху: «Фильтры» со счётчиком, сортировка, список или карта. Остаётся под рукой при прокрутке.",
+      "Фильтры открываются шторкой на весь экран. Внизу кнопка «Показать N» с живым числом результатов.",
+      "Карточки в одну колонку. На карте список объектов листается свайпом под картой."]],
+    project: ["Страница ЖК", [
+      "Галерея листается свайпом, счётчик фото в углу, кнопки «Видео с дрона» и «Генплан» под галереей.",
+      "Цена и калькулятор рассрочки стоят сразу после ключевых фактов, а не в конце длинной страницы.",
+      "Таблица планировок превращается в карточки, без горизонтальной прокрутки.",
+      "Нижняя панель: цена «от», платёж в месяц и кнопка «Написать». Видна на любом месте страницы."]],
+    listing: ["Объект вторички", [
+      "Свайп-галерея и видеообзор — главное, что смотрят с телефона.",
+      "Цена, торг и кнопки связи сразу после параметров объекта.",
+      "Нижняя панель: цена, цена за м² и запись на онлайн-показ."]],
+    howto: ["Как купить", [
+      "Шаги сделки — вертикальная линия, срок под названием шага.",
+      "Способы оплаты — карточки в одну колонку; метка «Регистрация и ВНЖ» читается первой.",
+      "Консультация юриста в конце страницы, мессенджеры — в нижней панели."]],
+    sitemap: ["Карта сайта", [
+      "Экран для команды. В телефонной версии разделы идут в одну колонку."]]
+  };
+  function renderMNotes(h) {
+    var d = MNOTES[h] || MNOTES.home;
+    document.getElementById("mnotes").innerHTML = "<h3>Мобильная версия</h3><div class=\"mn-title\">" + esc(d[0]) + "</div><ol>" +
+      d[1].map(function (x, i) { return '<li><span class="ann">' + (i + 1) + "</span><span>" + esc(x) + "</span></li>"; }).join("") +
+      "</ol><p>Ширина экрана 390 px. Листайте внутри рамки, меню и фильтры открываются шторкой.</p>";
+  }
+
+  /* ---------- events ---------- */
+  var toastTimer;
+  function toast(msg) {
+    var el = document.getElementById("toast");
+    el.textContent = msg; el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.hidden = true; }, 4200);
+  }
+  function currentScreen() { var s = document.querySelector(".screen.on"); return s ? s.dataset.screen : "home"; }
+
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    var vm = t.closest("[data-vmode]");
+    if (vm) { setPhone(vm.dataset.vmode === "phone"); return; }
+    var op = t.closest("[data-open]");
+    if (op) { openSheet(op.dataset.open); return; }
+    if (t.closest("[data-close]")) { closeSheets(); return; }
+    if (t.closest(".sheet a")) closeSheets();
+    var tg = t.closest("[data-tg]");
+    if (tg) {
+      e.preventDefault();
+      var scr = currentScreen();
+      var about = scr === "project" ? " «Здравствуйте! Интересует Azure Bay Residence»" : scr === "listing" ? " «Здравствуйте! Интересует объект ID 10482»" : "";
+      toast("Прототип: здесь откроется чат в мессенджере с готовым сообщением" + about + ". Источник заявки уходит в CRM.");
+      return;
+    }
+    var a = t.closest("a[href^='#']");
+    if (a && a.getAttribute("href") === location.hash) { e.preventDefault(); route(); return; }
+    var cur = t.closest("[data-cur]");
+    if (cur) { state.cur = cur.dataset.cur; document.querySelectorAll("[data-cur]").forEach(function (b) { b.setAttribute("aria-pressed", String(b === cur)); }); paintPrices(); renderCalc(); return; }
+    var fav = t.closest("[data-fav]");
+    if (fav) { e.preventDefault(); var id = fav.dataset.fav; if (state.fav.has(id)) state.fav.delete(id); else state.fav.add(id); syncFav(); return; }
+    var mk = t.closest("[data-market]");
+    if (mk) { state.market = mk.dataset.market; renderCatalog(); return; }
+    var hm = t.closest("[data-hmarket]");
+    if (hm) { state.hMarket = hm.dataset.hmarket; document.querySelectorAll("[data-hmarket]").forEach(function (b) { b.setAttribute("aria-pressed", String(b === hm)); }); return; }
+    var bd = t.closest("[data-beds]");
+    if (bd) { state.beds = bd.dataset.beds; document.querySelectorAll("[data-beds]").forEach(function (b) { b.setAttribute("aria-pressed", String(b === bd)); }); renderCatalog(); return; }
+    var vw = t.closest("[data-view]");
+    if (vw) { state.view = vw.dataset.view; document.querySelectorAll("[data-view]").forEach(function (b) { b.setAttribute("aria-pressed", String(b === vw)); }); renderCatalog(); return; }
+    if (t.closest("#f-reset")) {
+      ["f-city", "f-sea", "f-hand", "f-vnzh"].forEach(function (id) { document.getElementById(id).selectedIndex = 0; });
+      ["f-view", "f-inst", "f-furn", "f-verified"].forEach(function (id) { document.getElementById(id).checked = false; });
+      document.getElementById("f-max").value = "";
+      state.beds = "any"; document.querySelectorAll("[data-beds]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.beds === "any")); });
+      renderCatalog(); return;
+    }
+    if (t.closest("[data-q]")) { quizStep++; renderQuiz(); return; }
+    if (t.closest("#quiz-restart")) { quizStep = 0; renderQuiz(); return; }
+    var segBtn = t.closest("#quiz-form .seg button");
+    if (segBtn) { segBtn.parentNode.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", String(b === segBtn)); }); return; }
+    var other = t.closest("button.btn");
+    if (other && other.type !== "submit") toast("Прототип: «" + other.textContent.trim() + "» пока не подключено.");
+  });
+  document.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (e.target.id === "quiz-form") { quizStep++; renderQuiz(); return; }
+    if (e.target.id === "home-search") {
+      state.market = state.hMarket;
+      document.getElementById("f-city").value = document.getElementById("hs-city").value;
+      document.getElementById("f-max").value = document.getElementById("hs-max").value;
+      state.beds = document.getElementById("hs-beds").value;
+      document.querySelectorAll("[data-beds]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.beds === state.beds)); });
+      if (location.hash === "#catalog") route(); else location.hash = "catalog";
+    }
+  });
+  ["f-city", "f-sea", "f-hand", "f-sort", "f-view", "f-vnzh", "f-inst", "f-furn", "f-verified"].forEach(function (id) { document.getElementById(id).addEventListener("change", renderCatalog); });
+  document.getElementById("f-max").addEventListener("input", renderCatalog);
+  ["c-unit", "c-dp", "c-yr"].forEach(function (id) { document.getElementById(id).addEventListener("input", renderCalc); });
+  document.getElementById("ann-toggle").addEventListener("change", function (e) {
+    document.body.classList.toggle("no-ann", !e.target.checked);
+    try { localStorage.setItem("maru-notes", e.target.checked ? "1" : "0"); } catch (err) {}
+  });
+  window.addEventListener("hashchange", route);
+
+  /* ---------- boot ---------- */
+  document.getElementById("collections").innerHTML = COLLECTIONS.map(function (c) { return '<a class="chip" href="#catalog">' + esc(c) + "</a>"; }).join("");
+  document.getElementById("home-projects").innerHTML = PROJECTS.slice(0, 3).map(projectCard).join("");
+  document.getElementById("home-listings").innerHTML = LISTINGS.slice(0, 4).map(listingCard).join("");
+  document.getElementById("similar-projects").innerHTML = [PROJECTS[1], PROJECTS[5], PROJECTS[3]].map(projectCard).join("");
+  document.getElementById("similar-listings").innerHTML = [LISTINGS[0], LISTINGS[2], LISTINGS[5]].map(listingCard).join("");
+  renderUnits();
+  renderNotes();
+  renderQuiz();
+  try { if (localStorage.getItem("maru-notes") === "0") { document.getElementById("ann-toggle").checked = false; document.body.classList.add("no-ann"); } } catch (err) {}
+  paintPrices();
+  renderCalc();
+  syncFav();
+  try { if (localStorage.getItem("maru-phone") === "1" && window.innerWidth > 800) setPhone(true); } catch (err) {}
+  applyWidth();
+  if (window.ResizeObserver) new ResizeObserver(applyWidth).observe(device);
+  else window.addEventListener("resize", applyWidth);
+  route();
+})();
+</script>
